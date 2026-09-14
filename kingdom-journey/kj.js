@@ -131,7 +131,7 @@ function hideModal(){el('modal').style.display='none';}
 window.closeModal=()=>{sessionStorage.setItem('welcomed','1');hideModal();};
 function showWelcome(){showModal(`
   <h2>Welcome to the Kingdom Journey</h2>
-  <p><b>1 King, 2 Kingdoms, Our story!</b> Bible Studies · Scripture Breakdown — one lesson a week, two lines through the whole Book.</p>
+  <p><b>1 King, 2 Kingdoms, Our story!</b> A study trail through the whole Book — one lesson a week, two lines, one King.</p>
   <ul class="what">
    <li>The <b>Golden Line</b> follows the earthly throne — Samuel, Saul, David, the kings — all the way to the Cross.</li>
    <li class="b">The <b>Royal Blue Line</b> follows the Spiritual Bride — the faith-seed from Abel to the City.</li>
@@ -556,7 +556,7 @@ window.deleteSeat=async()=>{if(!fb)return alert('Demo mode.');if(!confirm('Delet
    CREDITS & SOURCES — the closing credits
    ============================================================ */
 async function renderCredits(){const A=el('app');
-  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Credits &amp; Sources</h1><div class="always">Bible Studies · Scripture Breakdown. Everything the lessons lean on is listed here, the way a film lists its credits at the end — and every week has its own page, with the authors and every sermon discussed.</div>${verse('dust')}</div>
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Credits &amp; Sources</h1><div class="always">Every lesson on the trail leans on something, and all of it is listed here, the way a film lists its credits at the end — and every week has its own page, with the authors and every sermon discussed.</div>${verse('dust')}</div>
   <div class="panel"><h2>Sources, week by week</h2><p class="sub">the Scripture walked, the sermons discussed, the books and the pictures — one page per week</p><div class="weeksrc">${sourcesIndexHTML()}</div></div>
   <div class="panel" style="margin-top:14px"><h2>Scripture</h2><p class="sub">the text the whole journey stands on</p><p style="color:var(--mist);font-size:14.5px">Quotations are from the King James Version. Where a passage is paraphrased for the story, the wording is ours; the meaning is held to the text, two or three witnesses first.</p></div>
   <div class="panel" style="margin-top:14px"><h2>How the studies are built</h2><p class="sub">what carries weight, in order</p><ul style="margin-left:18px;color:var(--mist);font-size:14.5px;line-height:1.7"><li><b style="color:var(--parchment)">The Bible</b> controls doctrine and context.</li><li><b style="color:var(--parchment)">The Message</b> is brought in as teaching, in our own words — what it says, never a quotation, never a date — and only where the Bible carries it.</li><li><b style="color:var(--parchment)">Outside sources</b> — harmonies of Samuel, Kings and Chronicles, archaeology, chronology — provide structure and history, never doctrine.</li><li>Anything still unresolved is said out loud and labelled an <b style="color:var(--parchment)">open question</b>.</li></ul></div>

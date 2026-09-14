@@ -1,6 +1,8 @@
 {
  "currentWeek": 1,
+ "dawn": {"nightUntil": 12, "dayFrom": 40},
+ "journeyComplete": false,
  "credits": {
-  "music": []
+  "music": ["The Herald (front-door fanfare) — composed and rendered for Good evening, friends; royalty-free", "Night and morning ambience — generated in the browser, no recordings"]
  }
 }

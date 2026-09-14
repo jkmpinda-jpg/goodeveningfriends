@@ -49,7 +49,8 @@ const VERSES={
  gathered:['For where two or three are gathered together in my name, there am I in the midst of them.','Matthew 18:20'],
  reason:['Come now, and let us reason together, saith the LORD.','Isaiah 1:18'],
  way:['I am the way, the truth, and the life: no man cometh unto the Father, but by me.','John 14:6'],
- epistle:['Ye are our epistle written in our hearts, known and read of all men.','2 Corinthians 3:2']};
+ epistle:['Ye are our epistle written in our hearts, known and read of all men.','2 Corinthians 3:2'],
+ cheerful:['Every man according as he purposeth in his heart, so let him give; not grudgingly, or of necessity: for God loveth a cheerful giver.','2 Corinthians 9:7']};
 const verse=k=>{const v=VERSES[k];return v?`<div class="vq road">“${v[0]}”<span>${v[1]}</span></div>`:'';};
 const THEME='Because of Christ we came from God, and through Christ we are going back to God. Pilgrims and strangers on the road — overcoming sin, death, lust and the powers of this world by the straight and narrow way. Few find it.';
 /* the other roads on the channel, and the Bible tools — shared tabs with the front door */
@@ -161,7 +162,7 @@ async function ensureProfile(u){
       emailOptIn:(d.emailOptIn!==undefined)?d.emailOptIn:true,phone:d.phone||'',smsOptIn:!!d.smsOptIn,joinedAt:d.joinedAt||Date.now(),
       invitedBy:d.invitedBy||(REF&&REF!==u.uid.slice(0,8)?REF:''),startedAt:d.startedAt||Date.now(),restarts:d.restarts||0,
       notebook:d.notebook||'',studyDay:d.studyDay||'',tz:Intl.DateTimeFormat().resolvedOptions().timeZone||'',lastSeen:Date.now(),
-      lastView:d.lastView||null,prefs:d.prefs||null};
+      lastView:d.lastView||null,prefs:d.prefs||null,donor:!!d.donor};
     if(d.prefs){Object.assign(PREFS,d.prefs);document.documentElement.classList.toggle('bigtext',!!PREFS.bigtext);syncSound();}
     await setDoc(ref,PROFILE,{merge:true});
   }catch(e){PROFILE={email:u.email||'',name:u.displayName||'',photo:u.photoURL||'',emailOptIn:true,phone:'',smsOptIn:false};}
@@ -181,7 +182,7 @@ function rememberView(){if(!fb||!user||view.page!=='week')return;try{const {doc,
 /* ---------------- routing: real history, so the back button stays on the site ---------------- */
 let view={page:'home',week:1,tab:'overview',story:null};
 let UNREAD={user:0,admin:0};
-const PAGES=['home','week','story','conversations','profile','credits','admin','community','live'];
+const PAGES=['home','week','story','conversations','profile','credits','admin','community','live','bless'];
 function routeHash(){if(view.page==='week')return `#week/${view.week}/${view.tab}`;if(view.page==='story')return `#story/${view.story}`;if(view.page==='admin')return `#admin/${view.tab||'inbox'}`;return '#'+view.page;}
 function readRoute(){const h=location.hash.replace('#','');const parts=h.split('/');const p=parts[0];
   if(!PAGES.includes(p)||!p){view.page='home';return;}view.page=p;
@@ -321,6 +322,7 @@ function render(){
   if(view.page==='conversations')renderConversations();
   if(view.page==='profile')renderProfile();
   if(view.page==='credits')renderCredits();
+  if(view.page==='bless')renderBless();
   if(view.page==='admin')renderAdmin();
 }
 
@@ -561,6 +563,52 @@ async function renderCredits(){const A=el('app');
     qs.forEach(d=>{const v=d.data();h+=`<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><img src="${v.thumb||v.src}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px;cursor:zoom-in" onclick="openLightbox('${v.src}','${esc(v.title)}')"><div style="font-size:13.5px"><b>${esc(v.title||'Untitled')}</b><div style="color:var(--mist)">${esc([v.artist,v.date].filter(Boolean).join(' · '))}</div><div style="color:var(--mist-dim);font-size:12px">${esc([v.source,v.license].filter(Boolean).join(' · '))}${v.week?` · Week ${v.week}`:''}</div></div></div>`;});
     box.innerHTML=h||'<div class="notice">Image credits will appear here as the lessons are illustrated.</div>';}catch(e){box.innerHTML='<div class="notice">Image credits will appear here as the lessons are illustrated.</div>';}
 }
+
+/* ============================================================
+   BLESS THE WORK — quiet giving, causes, and a ledger that opens for those who have given
+   Money never touches this site: the buttons go to the hosted giving links in content/config.json (bless.link,
+   bless.cashapp, bless.paypal, bless.crypto). Gifts and spending are recorded by the teacher; the record is the trust.
+   ============================================================ */
+const isDonor=()=>!!(PROFILE&&PROFILE.donor)||isAdmin();
+const money=(n,c)=>{try{return new Intl.NumberFormat(undefined,{style:'currency',currency:c||'USD'}).format(n||0);}catch(e){return (c||'USD')+' '+(n||0);}};
+const firstLast=n=>{const p=String(n||'A friend').trim().split(/\s+/);return p.length>1?p[0]+' '+p[p.length-1][0]+'.':p[0];};
+async function renderBless(){const A=el('app');const B=CONFIG.bless||{};
+  const links=[B.link?`<a class="btn" href="${esc(B.link)}" target="_blank" rel="noopener">Give with a wallet or card</a>`:'',B.cashapp?`<a class="btn ghost" href="https://cash.app/${esc(String(B.cashapp).replace(/^\$/,'$'))}" target="_blank" rel="noopener">Cash App ${esc(B.cashapp)}</a>`:'',B.paypal?`<a class="btn ghost" href="${esc(B.paypal)}" target="_blank" rel="noopener">PayPal</a>`:'',B.crypto?`<button class="btn ghost" onclick="navigator.clipboard.writeText('${esc(B.crypto)}');alert('Wallet address copied.')">Copy the wallet address</button>`:''].filter(Boolean).join('');
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Bless the work</h1><div class="always">Nothing here is asked for. If God has put it in your heart to bless what He is doing on this road, this is the quiet door — and the record of every gift and every dollar spent is open to everyone who has walked through it.</div>${verse('cheerful')}</div>
+   <div class="panel"><h2>Give</h2><p class="sub">Apple Pay, Google Pay, Cash App and cards through a hosted page — the money never passes through this site</p>
+    ${links?`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">${links}</div>`:'<div class="notice">The giving door is being built. It opens with the first lesson.</div>'}
+    <div class="notice" style="margin-top:12px">Giving toward a cause below? Put the cause’s name in the note or memo when you give, and it is credited there. Every gift is recorded by hand by the teacher, so allow a day before it shows on the record.</div></div>
+   <div class="panel" style="margin-top:14px"><h2>Causes</h2><p class="sub">what the family is raising for — a live session in another city, the ministry itself, or a Godly cause outside it</p><div id="causeList">Loading…</div>
+    ${user?(isDonor()?`<div class="field" style="margin-top:12px"><label>Make a request — what should we do together?</label><input type="text" id="cTitle" placeholder="e.g. A live session with the friends in New York" maxlength="90"><textarea id="cText" rows="3" placeholder="What it is for, and what it would take" style="margin-top:8px"></textarea><div style="margin-top:8px"><button class="btn" onclick="postCause()">Post the cause</button></div></div>`:`<div class="notice">Causes are posted by those who have given. Once your gift is recorded, you can make a request here.</div>`):`<div class="notice"><button class="btn" onclick="showSeatModal()">Join the journey</button> to see the causes and take part.</div>`}</div>
+   <div class="panel" style="margin-top:14px"><h2>The record</h2><p class="sub">every gift and every dollar spent — open to those who have given</p><div id="ledger">${user?(isDonor()?'Loading…':'<div class="lockmsg" style="padding:18px">🔒 The record opens once your own gift is recorded. That is the whole point of it: the people who trust the work with money get to see exactly what the work does with it.</div>'):'<div class="lockmsg" style="padding:18px">🔒 Sign in, and give, to open the record.</div>'}</div></div>
+   ${isAdmin()?adminBlessHTML():''}`;
+  loadCauses();if(isDonor()&&user)loadLedger();if(isAdmin())fillCauseSelects();}
+async function loadCauses(){const box=el('causeList');if(!box)return;if(!fb||!user){box.innerHTML='<div class="notice">Causes show for members.</div>';return;}
+  try{const {collection,getDocs,query,orderBy}=fb.fsM;const qs=await getDocs(query(collection(db,'causes'),orderBy('createdAt','desc')));let h='';
+    qs.forEach(d=>{const c=d.data();h+=`<div class="noteCard"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><b>${esc(c.title)}</b> <span class="fcat">${esc(c.status||'open')}</span><div style="font-size:13.5px;color:var(--mist);margin-top:4px">${esc(c.text||'')}</div><div style="font-size:11.5px;color:var(--mist-dim);margin-top:6px">asked by ${esc(firstLast(c.name))} · ${when(c.createdAt)}</div></div>${isAdmin()?`<div style="display:flex;gap:6px;align-items:flex-start"><select onchange="causeStatus('${d.id}',this.value)">${['open','funded','done','closed'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}</select></div>`:''}</div></div>`;});
+    box.innerHTML=h||'<div class="notice">No causes yet. The first one is waiting on the first gift.</div>';}catch(e){box.innerHTML=`<div class="notice">Could not load the causes (${esc(e.code||e.message)}).</div>`;}}
+window.postCause=async()=>{const t=(el('cTitle').value||'').trim(),x=(el('cText').value||'').trim();if(!t){alert('Give the cause a name.');return;}const {collection,addDoc}=fb.fsM;
+  await addDoc(collection(db,'causes'),{title:t.slice(0,90),text:x.slice(0,600),uid:user.uid,name:(PROFILE&&PROFILE.name)||user.displayName||'',createdAt:Date.now(),status:'open'});el('cTitle').value='';el('cText').value='';loadCauses();};
+window.causeStatus=async(id,st)=>{const {doc,updateDoc}=fb.fsM;await updateDoc(doc(db,'causes',id),{status:st});};
+async function loadLedger(){const box=el('ledger');if(!box)return;try{const {collection,getDocs,query,orderBy}=fb.fsM;
+    const [g,s,c]=await Promise.all([getDocs(query(collection(db,'gifts'),orderBy('at','desc'))),getDocs(query(collection(db,'spend'),orderBy('at','desc'))),getDocs(collection(db,'causes'))]);
+    const causes={};c.forEach(d=>causes[d.id]=d.data().title);const tot={};let gifts=[],spend=[];
+    g.forEach(d=>{const v=d.data();gifts.push(v);const k=v.causeId||'_';tot[k]=tot[k]||{in:0,out:0};tot[k].in+=+v.amount||0;});
+    s.forEach(d=>{const v=d.data();spend.push(v);const k=v.causeId||'_';tot[k]=tot[k]||{in:0,out:0};tot[k].out+=+v.amount||0;});
+    const sum=Object.entries(tot).map(([k,t])=>`<tr><td>${esc(k==='_'?'The ministry':(causes[k]||'a cause'))}</td><td>${money(t.in)}</td><td>${money(t.out)}</td><td><b>${money(t.in-t.out)}</b></td></tr>`).join('');
+    box.innerHTML=`<table class="ledger"><thead><tr><th>Where</th><th>Given</th><th>Spent</th><th>In hand</th></tr></thead><tbody>${sum||'<tr><td colspan=4>Nothing recorded yet.</td></tr>'}</tbody></table>
+     <h3 style="margin-top:14px">Gifts</h3>${gifts.length?`<table class="ledger"><tbody>${gifts.map(v=>`<tr><td>${when(v.at)}</td><td>${esc(firstLast(v.name))}</td><td>${money(v.amount,v.currency)}</td><td>${esc(v.causeId?(causes[v.causeId]||'a cause'):'the ministry')}</td><td style="color:var(--mist-dim)">${esc(v.note||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="notice">No gifts recorded yet.</div>'}
+     <h3 style="margin-top:14px">Spent</h3>${spend.length?`<table class="ledger"><tbody>${spend.map(v=>`<tr><td>${when(v.at)}</td><td>${money(v.amount,v.currency)}</td><td>${esc(v.causeId?(causes[v.causeId]||'a cause'):'the ministry')}</td><td style="color:var(--mist)">${esc(v.text||'')}</td>${v.receipt?`<td><a href="${esc(v.receipt)}" target="_blank" rel="noopener">receipt</a></td>`:'<td></td>'}</tr>`).join('')}</tbody></table>`:'<div class="notice">Nothing spent yet.</div>'}`;}
+  catch(e){box.innerHTML=`<div class="notice">Could not open the record (${esc(e.code||e.message)}).</div>`;}}
+function adminBlessHTML(){return `<div class="panel" style="margin-top:14px;border-color:rgba(217,164,65,.5)"><h2>Teacher's desk — the record</h2><p class="sub">record a gift when it lands in the giving account; record spending as it happens; the receipt link is optional</p>
+   <div class="two"><div><b>Record a gift</b><div class="field"><label>Member's email (opens the record for them)</label><input type="text" id="gEmail" placeholder="friend@gmail.com"></div><div class="field"><label>Amount (USD)</label><input type="number" id="gAmount" min="0" step="0.01" placeholder="25"></div><div class="field"><label>Cause (optional)</label><select id="gCause"><option value="">The ministry</option></select></div><div class="field"><label>Note (optional)</label><input type="text" id="gNote" placeholder="Cash App · #1234" maxlength="120"></div><button class="btn sm" onclick="recordGift()">Record the gift</button></div>
+   <div><b>Record spending</b><div class="field"><label>Amount (USD)</label><input type="number" id="sAmount" min="0" step="0.01" placeholder="120"></div><div class="field"><label>Cause (optional)</label><select id="sCause"><option value="">The ministry</option></select></div><div class="field"><label>What it paid for</label><input type="text" id="sText" placeholder="Train tickets — New York live" maxlength="160"></div><div class="field"><label>Receipt link (optional)</label><input type="text" id="sReceipt" placeholder="https://…"></div><button class="btn sm" onclick="recordSpend()">Record the spending</button></div></div></div>`;}
+async function fillCauseSelects(){if(!fb)return;try{const {collection,getDocs}=fb.fsM;const qs=await getDocs(collection(db,'causes'));const opts=[];qs.forEach(d=>opts.push(`<option value="${d.id}">${esc(d.data().title)}</option>`));['gCause','sCause'].forEach(id=>{const s=el(id);if(s)s.innerHTML='<option value="">The ministry</option>'+opts.join('');});}catch(e){}}
+window.recordGift=async()=>{const email=(el('gEmail').value||'').trim().toLowerCase(),amount=parseFloat(el('gAmount').value),causeId=el('gCause').value,note=(el('gNote').value||'').trim();if(!email||!(amount>0)){alert('Email and amount, please.');return;}
+  const {collection,getDocs,query,where,addDoc,doc,updateDoc}=fb.fsM;const qs=await getDocs(query(collection(db,'users'),where('email','==',email)));if(qs.empty){alert('No member with that email has signed in yet. Ask them to join the journey first, then record the gift.');return;}
+  const u=qs.docs[0];await addDoc(collection(db,'gifts'),{uid:u.id,name:u.data().name||email,amount,currency:'USD',causeId:causeId||null,note,at:Date.now(),by:user.email});await updateDoc(doc(db,'users',u.id),{donor:true});alert('Recorded. Their record is open.');el('gAmount').value='';el('gNote').value='';loadLedger();};
+window.recordSpend=async()=>{const amount=parseFloat(el('sAmount').value),causeId=el('sCause').value,text=(el('sText').value||'').trim(),receipt=(el('sReceipt').value||'').trim();if(!(amount>0)||!text){alert('Amount and what it paid for, please.');return;}
+  const {collection,addDoc}=fb.fsM;await addDoc(collection(db,'spend'),{amount,currency:'USD',causeId:causeId||null,text,receipt,at:Date.now(),by:user.email});alert('Recorded.');el('sAmount').value='';el('sText').value='';el('sReceipt').value='';loadLedger();};
 
 /* ============================================================
    ADMIN — the teacher's desk

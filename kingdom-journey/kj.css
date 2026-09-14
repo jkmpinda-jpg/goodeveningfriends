@@ -342,3 +342,10 @@ label.opt input{margin-top:3px;accent-color:var(--gold-500)}
 .trailstage{position:relative}
 .trailhint{position:absolute;left:14px;bottom:14px;font:500 11px var(--ff-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--mist-dim);background:rgba(5,11,27,.55);padding:5px 9px;border-radius:8px;pointer-events:none}
 @media(max-width:640px){.dd .menu{left:auto;right:0}}
+
+/* the record */
+.ledger{width:100%;border-collapse:collapse;font-size:13.5px}
+.ledger th{text-align:left;font:600 10.5px var(--ff-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--mist-dim);padding:6px 8px;border-bottom:1px solid var(--line)}
+.ledger td{padding:7px 8px;border-bottom:1px dashed rgba(30,48,96,.6);vertical-align:top}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.two{grid-template-columns:1fr}}

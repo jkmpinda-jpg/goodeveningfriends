@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Good evening, friends.</title>
-<meta name="description" content="Good evening, friends. Bible studies, told like a story. Something is coming in October.">
+<meta name="description" content="Good evening, friends. Bible studies, told like a story. Pilgrims and strangers — from God, and back to God, through Christ. Something is coming in October.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Good evening, friends.">
-<meta property="og:description" content="Bible studies, told like a story. Something is coming in October.">
+<meta property="og:description" content="Bible studies, told like a story. Pilgrims and strangers — from God, and back to God, through Christ. Something is coming in October.">
 <meta property="og:image" content="https://goodeveningfriends.com/assets/og_channel_1200x630.png">
 <meta property="og:url" content="https://goodeveningfriends.com/">
 <meta property="og:site_name" content="Good evening, friends.">
@@ -36,31 +36,41 @@ body{background:radial-gradient(120% 90% at 50% 8%,#1B3068 0%,transparent 58%),r
 .rule{height:1px;width:min(420px,64vw);background:linear-gradient(90deg,transparent,var(--gold-500),transparent);margin:26px 0 20px}
 .desc{font-family:var(--ff-display);font-weight:600;text-transform:uppercase;letter-spacing:.3em;font-size:clamp(11px,1.6vw,17px);color:var(--mist)}
 .intrigue{font-family:var(--ff-display);font-weight:600;text-transform:uppercase;letter-spacing:.34em;font-size:clamp(10px,1.4vw,14px);color:var(--gold-300);margin-top:22px}
-.find{margin-top:56px}
+.theme{font-family:var(--ff-quote);font-style:italic;font-size:clamp(17px,2.2vw,22px);color:var(--parchment);margin-top:30px;max-width:44ch;line-height:1.45}
+.verse{font-family:var(--ff-quote);font-style:italic;font-size:clamp(14px,1.7vw,17px);color:var(--mist);margin-top:12px;max-width:52ch;line-height:1.5}
+.verse b{display:block;font-family:var(--ff-ui);font-style:normal;font-weight:600;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-300);margin-top:6px}
+.bottom{position:relative;z-index:2;text-align:center;padding:20px 20px 0}
+.find{margin:0 auto;display:flex;flex-direction:column;align-items:center}
 .find .kicker{font:600 10.5px var(--ff-ui);letter-spacing:.26em;text-transform:uppercase;color:var(--mist-dim);margin-bottom:14px}
-.pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:640px}
+.pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:760px}
 .pills a{display:inline-flex;align-items:center;gap:8px;background:rgba(17,30,69,.62);border:1px solid var(--line);color:var(--parchment);font:600 12px var(--ff-ui);letter-spacing:.06em;padding:8px 14px;border-radius:100px;text-decoration:none;transition:border-color .15s,transform .15s}
 .pills a:hover{border-color:var(--gold-500);transform:translateY(-1px)}
 .pills a:focus-visible{outline:2px solid var(--gold-300);outline-offset:2px}
 .pills a i{width:7px;height:7px;border-radius:50%;background:var(--gold-500);display:inline-block}
 .pills a.b i{background:var(--blue-500)}
-footer{position:relative;z-index:2;text-align:center;padding:0 20px 34px;color:var(--mist-dim);font-size:12px;letter-spacing:.08em}
+footer{position:relative;z-index:2;text-align:center;padding:26px 20px 34px;color:var(--mist-dim);font-size:12px;letter-spacing:.08em}
 footer a{color:var(--mist-dim);text-decoration:none}
+.sitemap{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 18px;margin:0 auto 14px;max-width:820px}
+.sitemap a{color:var(--mist);font:500 12.5px var(--ff-ui);letter-spacing:.04em;padding:4px 0;border-bottom:1px solid transparent}
+.sitemap a:hover{color:var(--gold-300);border-bottom-color:rgba(217,164,65,.5)}
+.sitemap a.collab{color:var(--gold-300)}
+.owner{margin-top:10px;font-size:11px;letter-spacing:.06em;color:var(--mist-dim)}
 /* arrival */
-.z>*,.find{opacity:0;transform:translateY(8px);animation:up .9s ease forwards}
-.mark{animation-delay:.1s}.gef{animation-delay:.35s}.rule{animation-delay:.7s}.desc{animation-delay:.85s}.intrigue{animation-delay:1.15s}.find{animation-delay:1.5s}
+.z>*,.find,.sitemap{opacity:0;transform:translateY(8px);animation:up .9s ease forwards}
+.mark{animation-delay:.1s}.gef{animation-delay:.35s}.rule{animation-delay:.7s}.desc{animation-delay:.85s}.intrigue{animation-delay:1.15s}.theme{animation-delay:1.35s}.verse{animation-delay:1.5s}.find{animation-delay:1.7s}.sitemap{animation-delay:1.9s}
 .gef .dot{opacity:0;animation:in .6s ease 1.25s forwards}
 .rails path{stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 2.4s ease .2s forwards}
 .rails path.b{animation-delay:.45s}
 @keyframes up{to{opacity:1;transform:none}}
 @keyframes in{to{opacity:1}}
 @keyframes draw{to{stroke-dashoffset:0}}
-body:not(.arrived) .z>*,body:not(.arrived) .find,body:not(.arrived) .gef .dot,body:not(.arrived) .rails path{animation-play-state:paused}
-@media(prefers-reduced-motion:reduce){.z>*,.find,.gef .dot{opacity:1;transform:none;animation:none}.rails path{stroke-dashoffset:0;animation:none}}
+body:not(.arrived) .z>*,body:not(.arrived) .find,body:not(.arrived) .sitemap,body:not(.arrived) .gef .dot,body:not(.arrived) .rails path{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.z>*,.find,.sitemap,.gef .dot{opacity:1;transform:none;animation:none}.rails path{stroke-dashoffset:0;animation:none}}
 </style>
 <script src="/assets/herald.js?v=1" defer></script>
 </head>
 <body>
+<div id="sitenav" data-here="home"></div>
 <main class="stage">
   <svg class="stars" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <g fill="#F6F1E6">
@@ -88,10 +98,14 @@ body:not(.arrived) .z>*,body:not(.arrived) .find,body:not(.arrived) .gef .dot,bo
     <div class="rule"></div>
     <div class="desc">Bible studies &nbsp;·&nbsp; told like a story</div>
     <div class="intrigue">Something is coming &nbsp;·&nbsp; October</div>
+    <div class="theme">Pilgrims and strangers — from God, and back to God, through Christ. A journey up the straight and narrow road, past sin, death, lust and the powers of this world.</div>
+    <div class="verse">“Strait is the gate, and narrow is the way, which leadeth unto life, and few there be that find it.”<b>Matthew 7:14</b></div>
   </div>
 
-  <div class="find z">
-    <div class="kicker">While the table is being set, find us here</div>
+</main>
+<div class="bottom">
+  <div class="find">
+    <div class="kicker">Until the road opens, find us here</div>
     <nav class="pills" aria-label="Find us">
       <a href="https://www.youtube.com/@Goodeveningfriends7" target="_blank" rel="noopener"><i></i>YouTube</a>
       <a class="b" href="https://www.twitch.tv/goodeveningfriends7" target="_blank" rel="noopener"><i></i>Twitch</a>
@@ -101,7 +115,14 @@ body:not(.arrived) .z>*,body:not(.arrived) .find,body:not(.arrived) .gef .dot,bo
       <a class="b" href="https://www.threads.com/@goodeveningfriends_7" target="_blank" rel="noopener"><i></i>Threads</a>
     </nav>
   </div>
-</main>
-<footer>goodeveningfriends.com &nbsp;·&nbsp; <a href="mailto:goodeveningfriends7@gmail.com">write to us</a></footer>
+</div>
+<footer>
+  <nav class="sitemap" aria-label="Site map">
+    <a href="/">Home</a><a href="/kingdom-journey">The Kingdom Journey</a><a href="/kingdom-journey#home">The Trail</a><a href="/series">Series</a><a href="/family-tree/">The Family Tree</a><a href="https://www.blueletterbible.org/" target="_blank" rel="noopener">Blue Letter Bible</a><a href="https://www.scripturemark.org/canvas" target="_blank" rel="noopener">ScriptureMark</a><a href="/kingdom-journey#credits">Credits &amp; sources</a><a href="/legal/">Legal</a><a href="mailto:goodeveningfriends7@gmail.com">Write to us</a><a class="collab" href="mailto:goodeveningfriends7@gmail.com?subject=Collab%20with%20Good%20evening%2C%20friends">Collab ✦</a>
+  </nav>
+  goodeveningfriends.com
+  <div class="owner">© Entreprises Royales Du Congo · <a href="/legal/">terms, conduct &amp; disclaimer</a></div>
+</footer>
+<script src="/assets/sitenav.js?v=1" defer></script>
 </body>
 </html>

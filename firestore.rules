@@ -11,18 +11,37 @@ service cloud.firestore {
         && email() in get(/databases/$(database)/documents/settings/admins).data.emails);
     }
     function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function mine() { return signedIn() && request.resource.data.uid == request.auth.uid; }
+    // a member's message: their own uid, short enough, and any picture starts out pending review
+    function cleanMessage() {
+      return mine()
+        && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+        && (!('image' in request.resource.data) || request.resource.data.image.status == 'pending');
+    }
+    // members may only touch the reaction fields of somebody's message
+    function reactionOnly() {
+      return signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'reactedBy']);
+    }
 
-    // site settings (incl. the admin list): readable by signed-in members so the app knows who holds the keys; written only by the root admins
+    // site settings: the live switch is public (the banner shows for everyone); the rest is for signed-in members; root writes the admin list
+    match /settings/live {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /settings/speakers {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
     match /settings/{doc} {
       allow read: if signedIn();
       allow write: if isRoot();
     }
 
-    // profile: owner writes; owner or admin reads (member / email / SMS lists); owner may delete their seat
+    // profile: owner writes; owner or admin reads (member / email / SMS lists); owner may delete their account
     match /users/{uid} {
       allow read: if owner(uid) || isAdmin();
       allow write: if owner(uid);
-      // scores, notes — owner only, private even from admin; owner may delete (restart journey)
+      // scores, notes, bars — owner only, private even from admin
       match /{document=**} { allow read, write: if owner(uid); }
     }
 
@@ -35,7 +54,7 @@ service cloud.firestore {
       }
     }
 
-    // v3 conversations — many private threads per member, attachments inline
+    // Messages — many private threads per member, attachments inline
     match /conversations/{cid} {
       allow read: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
@@ -47,6 +66,49 @@ service cloud.firestore {
           ((get(/databases/$(database)/documents/conversations/$(cid)).data.uid == request.auth.uid && request.resource.data.from == 'user')
            || (isAdmin() && request.resource.data.from == 'jonathan'));
       }
+    }
+
+    // Community rooms: members read and write; the teacher makes rooms, hides messages and approves pictures
+    match /rooms/{rid} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+      match /messages/{mid} {
+        allow read: if signedIn();
+        allow create: if cleanMessage();
+        allow update: if isAdmin() || reactionOnly();
+        allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      }
+    }
+
+    // Live: the session record is public (past lives), the chat is public to read, members write; hands are private to the raiser and the teacher
+    match /live/{sid} {
+      allow read: if true;
+      allow write: if isAdmin();
+      match /messages/{mid} {
+        allow read: if true;
+        allow create: if cleanMessage();
+        allow update: if isAdmin() || reactionOnly();
+        allow delete: if isAdmin();
+      }
+      match /hands/{uid} {
+        allow read: if owner(uid) || isAdmin();
+        allow create, update: if owner(uid) && request.resource.data.uid == uid;
+        allow delete: if owner(uid) || isAdmin();
+      }
+    }
+
+    // Bars — the lines that hit, kept by each member, seen by the community
+    match /bars/{id} {
+      allow read: if signedIn();
+      allow create: if mine();
+      allow update: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid) || reactionOnly();
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    // flags: anyone signed in can raise one; only the teacher reads and closes them
+    match /reports/{id} {
+      allow create: if mine();
+      allow read, update, delete: if isAdmin();
     }
 
     // polls: admin creates/edits; signed-in read; one vote per user

@@ -1,8 +1,21 @@
 {
  "currentWeek": 1,
- "dawn": {"nightUntil": 12, "dayFrom": 40},
+ "dawn": {
+  "nightUntil": 12,
+  "dayFrom": 40
+ },
  "journeyComplete": false,
  "credits": {
-  "music": ["The Herald (front-door fanfare) — composed and rendered for Good evening, friends; royalty-free", "Night and morning ambience — generated in the browser, no recordings"]
+  "music": [
+   "The Herald (front-door fanfare) \u2014 composed and rendered for Good evening, friends; royalty-free",
+   "Night and morning ambience \u2014 generated in the browser, no recordings"
+  ]
+ },
+ "bless": {
+  "link": "",
+  "cashapp": "",
+  "paypal": "",
+  "crypto": "",
+  "_how": "link = the hosted giving page (Stripe Payment Link or similar: Apple Pay / Google Pay / cards); cashapp = $cashtag; paypal = paypal.me link; crypto = wallet address. Empty = button hidden."
  }
 }

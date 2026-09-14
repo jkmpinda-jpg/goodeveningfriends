@@ -1,11 +1,13 @@
-# The Kingdom Journey — Study Hub (v3)
+# goodeveningfriends.com — the front door of the channel (static site, Vercel)
 
-Good evening, friends. One static page (`index.html`) + Firebase Auth/Firestore (project `kingdom-journey`).
+Good evening, friends. Static HTML + Firebase Auth/Firestore (project `kingdom-journey`) for the Kingdom Journey companion.
 
-**Deploy:** any static host. Vercel: import this repo, no build step, output = root. Firebase: `firebase deploy`.
-**Firestore rules:** paste `firestore.rules` into Firebase Console → Firestore → Rules (or `firebase deploy --only firestore:rules`).
-**Auth:** add the site's domain to Firebase Console → Authentication → Settings → Authorized domains.
-
-**Weekly rhythm:** add `content/weekNN.json`, raise `currentWeek` in `content/config.json`, push.
-**Short links:** `/yt /tt /ig /fb /tw /th /live` → edit in `vercel.json` (Vercel) and `firebase.json` (Firebase) plus `LINKS` at the top of `index.html`.
-**Admins:** `ADMINS` in `index.html` and `isAdmin()` in `firestore.rules`.
+**Pages:** `/` teaser front door · `/home` full landing (unlisted until launch) · `/series` · `/kingdom-journey` the companion (`kingdom-journey/index.html` + `kj.js` + `kj.css` + `trail3d.js` + `ambience.js`).
+**Deploy:** Vercel, no build step, output = root; every commit to `main` deploys.
+**Sign-in:** begins at goodeveningfriends.com — `vercel.json` proxies `/__/auth/*` to Firebase; `authDomain` in `firebase-config.js` is our domain.
+**Firestore rules:** `firestore.rules` → Firebase Console → Firestore → Rules → Publish.
+**Weekly rhythm:** add `content/weekNN.json`, raise `currentWeek` in `content/config.json`, push. Sealed titles ahead come from `content/trail.json`.
+**The hour on the road:** `dawn.nightUntil` / `dawn.dayFrom` and `journeyComplete` in `content/config.json`.
+**Admins:** root admins in `kj.js` (`ROOT_ADMINS`) and `firestore.rules`; more from Admin → Tools.
+**Short links:** `/yt /tt /ig /fb /tw /th /live` → `vercel.json` + `LINKS` in `kj.js`.
+**Old address:** `firebase.json` turns kingdom-journey.web.app into a redirect here (`firebase deploy --only hosting`).

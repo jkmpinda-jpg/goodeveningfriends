@@ -2,10 +2,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function isAdmin() { return signedIn() && request.auth.token.email in ['jkmpinda@gmail.com', 'goodeveningfriends7@gmail.com']; }
+    function email() { return request.auth.token.email; }
+    // the two root admins can never be locked out; more admins are added from the Teacher's Desk (settings/admins)
+    function isRoot() { return signedIn() && email() in ['jkmpinda@gmail.com', 'goodeveningfriends7@gmail.com']; }
+    function isAdmin() {
+      return isRoot() || (signedIn()
+        && exists(/databases/$(database)/documents/settings/admins)
+        && email() in get(/databases/$(database)/documents/settings/admins).data.emails);
+    }
     function owner(uid) { return signedIn() && request.auth.uid == uid; }
 
-    // profile: owner writes; owner or admin reads (member / email / SMS lists)
+    // site settings (incl. the admin list): readable by signed-in members so the app knows who holds the keys; written only by the root admins
+    match /settings/{doc} {
+      allow read: if signedIn();
+      allow write: if isRoot();
+    }
+
+    // profile: owner writes; owner or admin reads (member / email / SMS lists); owner may delete their seat
     match /users/{uid} {
       allow read: if owner(uid) || isAdmin();
       allow write: if owner(uid);

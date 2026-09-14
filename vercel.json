@@ -2,19 +2,92 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    { "source": "/yt",   "destination": "https://www.youtube.com/@Goodeveningfriends7", "permanent": false },
-    { "source": "/live", "destination": "https://www.youtube.com/@Goodeveningfriends7/live", "permanent": false },
-    { "source": "/tt",   "destination": "https://www.tiktok.com/@goodeveningfriend3", "permanent": false },
-    { "source": "/ig",   "destination": "https://www.instagram.com/goodeveningfriends_7/", "permanent": false },
-    { "source": "/th",   "destination": "https://www.threads.com/@goodeveningfriends_7", "permanent": false },
-    { "source": "/fb",   "destination": "https://www.facebook.com/goodeveningfriends7", "permanent": false },
-    { "source": "/tw",   "destination": "https://www.twitch.tv/goodeveningfriends7", "permanent": false }
+    {
+      "source": "/yt",
+      "destination": "https://www.youtube.com/@Goodeveningfriends7",
+      "permanent": false
+    },
+    {
+      "source": "/live",
+      "destination": "https://www.youtube.com/@Goodeveningfriends7/live",
+      "permanent": false
+    },
+    {
+      "source": "/tt",
+      "destination": "https://www.tiktok.com/@goodeveningfriend3",
+      "permanent": false
+    },
+    {
+      "source": "/ig",
+      "destination": "https://www.instagram.com/goodeveningfriends_7/",
+      "permanent": false
+    },
+    {
+      "source": "/th",
+      "destination": "https://www.threads.com/@goodeveningfriends_7",
+      "permanent": false
+    },
+    {
+      "source": "/fb",
+      "destination": "https://www.facebook.com/goodeveningfriends7",
+      "permanent": false
+    },
+    {
+      "source": "/tw",
+      "destination": "https://www.twitch.tv/goodeveningfriends7",
+      "permanent": false
+    }
   ],
   "headers": [
-    { "source": "/(.*)", "headers": [
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-    ]},
-    { "source": "/assets/(.*)", "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800" } ] }
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800"
+        }
+      ]
+    },
+    {
+      "source": "/kingdom-journey/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/content/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/__/auth/:path*",
+      "destination": "https://kingdom-journey.firebaseapp.com/__/auth/:path*"
+    },
+    {
+      "source": "/__/firebase/:path*",
+      "destination": "https://kingdom-journey.firebaseapp.com/__/firebase/:path*"
+    }
   ]
 }

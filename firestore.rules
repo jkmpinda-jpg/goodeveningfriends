@@ -37,10 +37,17 @@ service cloud.firestore {
       allow write: if isRoot();
     }
 
-    // profile: owner writes; owner or admin reads (member / email / SMS lists); owner may delete their account
+    function isDonor() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('donor', false) == true;
+    }
+
+    // profile: owner writes; owner or admin reads (member / email / SMS lists); owner may delete their account;
+    // the teacher may only flip the donor flag (it opens the giving record for that member)
     match /users/{uid} {
       allow read: if owner(uid) || isAdmin();
       allow write: if owner(uid);
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['donor']);
       // scores, notes, bars — owner only, private even from admin
       match /{document=**} { allow read, write: if owner(uid); }
     }
@@ -116,6 +123,22 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isAdmin();
       match /votes/{uid} { allow read: if signedIn(); allow write: if owner(uid); }
+    }
+
+    // Bless the work: causes are seen by members and posted by those who have given; gifts and spending are
+    // recorded by the teacher and read only by those who have given (and the teacher)
+    match /causes/{id} {
+      allow read: if signedIn();
+      allow create: if (isDonor() || isAdmin()) && mine() && request.resource.data.title is string && request.resource.data.title.size() <= 90;
+      allow update, delete: if isAdmin();
+    }
+    match /gifts/{id} {
+      allow read: if isDonor() || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /spend/{id} {
+      allow read: if isDonor() || isAdmin();
+      allow write: if isAdmin();
     }
 
     // image vault: public credits, admin curates

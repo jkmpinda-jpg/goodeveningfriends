@@ -10,7 +10,7 @@
    ============================================================ */
 import {createTrail} from './trail3d.js';
 import {Ambience} from './ambience.js';
-import {initSocial,BARS_EMOJIS} from './social.js';
+import {initSocial,BARS_EMOJIS} from './social.js?v=8';
 
 const LINKS={
   site:'https://goodeveningfriends.com',
@@ -131,7 +131,7 @@ function hideModal(){el('modal').style.display='none';}
 window.closeModal=()=>{sessionStorage.setItem('welcomed','1');hideModal();};
 function showWelcome(){showModal(`
   <h2>Welcome to the Kingdom Journey</h2>
-  <p>A Bible study told like a story — one lesson a week, two lines through the whole Book, one King.</p>
+  <p><b>1 King, 2 Kingdoms, Our story!</b> Bible Studies · Scripture Breakdown — one lesson a week, two lines through the whole Book.</p>
   <ul class="what">
    <li>The <b>Golden Line</b> follows the earthly throne — Samuel, Saul, David, the kings — all the way to the Cross.</li>
    <li class="b">The <b>Royal Blue Line</b> follows the Spiritual Bride — the faith-seed from Abel to the City.</li>
@@ -182,12 +182,13 @@ function rememberView(){if(!fb||!user||view.page!=='week')return;try{const {doc,
 /* ---------------- routing: real history, so the back button stays on the site ---------------- */
 let view={page:'home',week:1,tab:'overview',story:null};
 let UNREAD={user:0,admin:0};
-const PAGES=['home','week','story','conversations','profile','credits','admin','community','live','bless'];
-function routeHash(){if(view.page==='week')return `#week/${view.week}/${view.tab}`;if(view.page==='story')return `#story/${view.story}`;if(view.page==='admin')return `#admin/${view.tab||'inbox'}`;return '#'+view.page;}
+const PAGES=['home','week','story','conversations','profile','credits','sources','admin','community','live','bless'];
+function routeHash(){if(view.page==='week')return `#week/${view.week}/${view.tab}`;if(view.page==='sources')return `#sources/${view.week}`;if(view.page==='story')return `#story/${view.story}`;if(view.page==='admin')return `#admin/${view.tab||'inbox'}`;return '#'+view.page;}
 function readRoute(){const h=location.hash.replace('#','');const parts=h.split('/');const p=parts[0];
   if(!PAGES.includes(p)||!p){view.page='home';return;}view.page=p;
   if(p==='week'){view.week=parseInt(parts[1])||CONFIG.currentWeek||1;view.tab=parts[2]||'overview';}
   if(p==='story')view.story=parts[1]==='B'?'B':'A';
+  if(p==='sources')view.week=parseInt(parts[1])||CONFIG.currentWeek||1;
   if(p==='admin')view.tab=parts[1]||'inbox';}
 function pushRoute(){const h=routeHash();if(location.hash!==h)history.pushState({v:{...view}},'',h);else history.replaceState({v:{...view}},'',h);}
 window.addEventListener('popstate',e=>{if(e.state&&e.state.v)view={...e.state.v};else readRoute();window.scrollTo({top:0});render();});
@@ -196,6 +197,7 @@ history.replaceState({v:{...view}},'',location.hash||'#home');
 const canSee=n=>!!user&&n<=(CONFIG.currentWeek||1);
 const beforeLaunch=p=>{const la=CONFIG.launchAt?Date.parse(CONFIG.launchAt):null;return !!p&&!!p.joinedAt&&(la?p.joinedAt<la:true);};
 window.go=p=>{view.page=p;view.story=null;if(p==='admin')view.tab='inbox';pushRoute();window.scrollTo({top:0});render();};
+window.openSources=n=>{view.page='sources';view.week=parseInt(n)||view.week||1;view.story=null;pushRoute();window.scrollTo({top:0});render();};
 window.openWeek=n=>{if(!user){showSeat();return;}if(!canSee(n))return;view.page='week';view.week=n;view.tab='overview';visited={parable:false,ta:false,tb:false};pushRoute();window.scrollTo({top:0});render();};
 window.openStory=(tr,n)=>{if(!user){showSeat();return;}if(!canSee(n))return;view.page='story';view.story=tr;pushRoute();render();setTimeout(()=>{const c=el('ch'+n);if(c)c.scrollIntoView({behavior:'smooth'});},80);};
 window.setTab=k=>{if(k==='quiz'&&!(visited.parable&&visited.ta&&visited.tb)){alert('The quiz unlocks after you read the Parable, walk the Golden Line and walk the Royal Blue Line — study first, then test.');return;}
@@ -286,7 +288,7 @@ function render(){
   if(view.page==='home'){const weeks=trailWeeks();
     A.innerHTML=`
      <div class="hero"><div class="kicker">a series from Good evening, friends</div><h1>The Kingdom <i>Journey</i></h1>
-      <div class="tag">Two kingdoms. One King.</div><div class="rule"></div>
+      <div class="tag">1 King, 2 Kingdoms, Our story!</div><div class="rule"></div>
       <div class="always">Tracing the earthly throne and the heavenly kingdom, side by side. You were always part of this Kingdom.</div>
       <div class="theme">${THEME}</div>${verse('gate')}</div>
      <div id="trailWrap"><div class="trailhead"><b>THE TRAIL</b><span class="mono">${user?'drag up or down to walk · drag sideways to pivot · scroll to walk · pinch or ⌃scroll to zoom · click a number or a stone':'walk the road freely — drag to walk or pivot, scroll, pinch to zoom · join the journey to open the lessons'}</span><div class="ctl" id="trailCtl"></div></div>
@@ -322,6 +324,7 @@ function render(){
   if(view.page==='conversations')renderConversations();
   if(view.page==='profile')renderProfile();
   if(view.page==='credits')renderCredits();
+  if(view.page==='sources')renderSources();
   if(view.page==='bless')renderBless();
   if(view.page==='admin')renderAdmin();
 }
@@ -331,7 +334,7 @@ function creditsBlock(w){
   const all=[...(w.parable&&w.parable.sections||[]),...(w.trackA&&w.trackA.sections||[]),...(w.trackB&&w.trackB.sections||[])];
   const secs=all.map(s=>`<li><b>${esc(s.h)}</b> — ${L[s.lbl]||s.lbl}${s.src?`<br><span style="color:var(--mist-dim)">${esc(s.src)}</span>`:''}</li>`).join('');
   const extra=(w.credits||[]).map(c=>`<li>${esc(c)}</li>`).join('');
-  return `<details class="credits"><summary>Sources &amp; labels for this week</summary><ul>${secs}${extra}<li>Scripture references and full source notes live on the <a href="#credits" onclick="go('credits');return false">Credits &amp; sources</a> page.</li></ul></details>`;
+  return `<details class="credits"><summary>Sources &amp; labels for this week</summary><ul>${secs}${extra}<li>Every passage, every sermon and every book behind this week, with authors, is on <a href="#sources/${w.n}" onclick="openSources(${w.n});return false">Sources — Week ${w.n}</a>; the whole series' credits are on <a href="#credits" onclick="go('credits');return false">Credits &amp; sources</a>.</li></ul></details>`;
 }
 const LBL={bible:'The Bible',msg:'The Message',out:'Outside sources',int:'Open question'};
 function renderTab(w){
@@ -553,8 +556,9 @@ window.deleteSeat=async()=>{if(!fb)return alert('Demo mode.');if(!confirm('Delet
    CREDITS & SOURCES — the closing credits
    ============================================================ */
 async function renderCredits(){const A=el('app');
-  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Credits &amp; Sources</h1><div class="always">The lessons are made to be watched like a story. Everything they lean on is listed here, the way a film lists its credits at the end.</div>${verse('dust')}</div>
-  <div class="panel"><h2>Scripture</h2><p class="sub">the text the whole journey stands on</p><p style="color:var(--mist);font-size:14.5px">Quotations are from the King James Version. Where a passage is paraphrased for the story, the wording is ours; the meaning is held to the text, two or three witnesses first.</p></div>
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Credits &amp; Sources</h1><div class="always">Bible Studies · Scripture Breakdown. Everything the lessons lean on is listed here, the way a film lists its credits at the end — and every week has its own page, with the authors and every sermon discussed.</div>${verse('dust')}</div>
+  <div class="panel"><h2>Sources, week by week</h2><p class="sub">the Scripture walked, the sermons discussed, the books and the pictures — one page per week</p><div class="weeksrc">${sourcesIndexHTML()}</div></div>
+  <div class="panel" style="margin-top:14px"><h2>Scripture</h2><p class="sub">the text the whole journey stands on</p><p style="color:var(--mist);font-size:14.5px">Quotations are from the King James Version. Where a passage is paraphrased for the story, the wording is ours; the meaning is held to the text, two or three witnesses first.</p></div>
   <div class="panel" style="margin-top:14px"><h2>How the studies are built</h2><p class="sub">what carries weight, in order</p><ul style="margin-left:18px;color:var(--mist);font-size:14.5px;line-height:1.7"><li><b style="color:var(--parchment)">The Bible</b> controls doctrine and context.</li><li><b style="color:var(--parchment)">The Message</b> is brought in as teaching, in our own words — what it says, never a quotation, never a date — and only where the Bible carries it.</li><li><b style="color:var(--parchment)">Outside sources</b> — harmonies of Samuel, Kings and Chronicles, archaeology, chronology — provide structure and history, never doctrine.</li><li>Anything still unresolved is said out loud and labelled an <b style="color:var(--parchment)">open question</b>.</li></ul></div>
   <div class="panel" style="margin-top:14px"><h2>Images</h2><p class="sub">real depictions, drawn from open collections</p><div id="imgCredits">Loading…</div></div>
   <div class="panel" style="margin-top:14px"><h2>Music &amp; sound</h2><p class="sub">listed as the series grows</p><div id="musicCredits" style="color:var(--mist);font-size:14.5px">${(CONFIG.credits&&CONFIG.credits.music||[]).map(m=>`<div>${esc(m)}</div>`).join('')||'The theme and the daily readings will be credited here.'}</div></div>`;
@@ -562,6 +566,32 @@ async function renderCredits(){const A=el('app');
   try{const {collection,getDocs,query,orderBy}=fb.fsM;const qs=await getDocs(query(collection(db,'vault'),orderBy('savedAt','desc')));let h='';
     qs.forEach(d=>{const v=d.data();h+=`<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><img src="${v.thumb||v.src}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:6px;cursor:zoom-in" onclick="openLightbox('${v.src}','${esc(v.title)}')"><div style="font-size:13.5px"><b>${esc(v.title||'Untitled')}</b><div style="color:var(--mist)">${esc([v.artist,v.date].filter(Boolean).join(' · '))}</div><div style="color:var(--mist-dim);font-size:12px">${esc([v.source,v.license].filter(Boolean).join(' · '))}${v.week?` · Week ${v.week}`:''}</div></div></div>`;});
     box.innerHTML=h||'<div class="notice">Image credits will appear here as the lessons are illustrated.</div>';}catch(e){box.innerHTML='<div class="notice">Image credits will appear here as the lessons are illustrated.</div>';}
+}
+
+/* ============================================================
+   SOURCES — one page per week: the Scripture walked, the sermons the Message paragraphs stand on (the author is
+   named here and only here), the outside books with their authors, and the pictures. Lesson pages keep it collapsed.
+   ============================================================ */
+const SRC_PAGES=()=>({parable:'The Parable',trackA:LINE.A.name,trackB:LINE.B.name});
+function sourcesIndexHTML(){const cw=CONFIG.currentWeek||1;const out=[];
+  for(let i=1;i<=cw;i++){const w=WEEKS[i];const t=w?w.title:((TRAILDATA.find(x=>x.n===i)||{}).title||'');out.push(`<a class="wsrc" href="#sources/${i}" onclick="openSources(${i});return false"><b>Week ${i}</b><span>${esc(t)}</span></a>`);}
+  return out.join('')+`<div class="notice" style="margin-top:10px">More weeks are added here as the road opens.</div>`;}
+function renderSources(){const A=el('app');const n=view.week;const w=WEEKS[n];const P=SRC_PAGES();
+  const back=`<p style="margin-top:16px"><a class="btn ghost" href="#credits" onclick="go('credits');return false">← Credits &amp; sources</a> ${w&&user?`<a class="btn ghost" href="#week/${n}/overview" onclick="view.page='week';view.week=${n};view.tab='overview';pushRoute();render();return false" style="margin-left:8px">Back to Week ${n}</a>`:''}</p>`;
+  if(!w){A.innerHTML=`<div class="hero" style="padding-top:12px"><div class="kicker">Sources</div><h1 style="font-size:24px">Week ${n}</h1><div class="always">This week's sources appear when its lesson opens.</div>${verse('dust')}</div>${back}`;return;}
+  const scr=w.scripture||{};
+  const scrHTML=Object.keys(P).map(k=>{const s=scr[k];if(!s)return '';return `<div class="srcgrp"><h3>${P[k]}</h3><p><b>Walked:</b> ${(s.main||[]).map(esc).join(' · ')}</p>${s.also&&s.also.length?`<p class="also"><b>Also cited:</b> ${s.also.map(esc).join(' · ')}</p>`:''}</div>`;}).join('')||'<div class="notice">Listed with the lesson.</div>';
+  const sermons=w.sermons||[];
+  const serHTML=Object.keys(P).map(k=>{const list=sermons.filter(x=>x.page===k);if(!list.length)return '';return `<div class="srcgrp"><h3>${P[k]}</h3><ul>${list.map(x=>`<li><b>${esc(x.title)}</b> <span class="code">${esc(x.code||'')}</span><br><span class="what">${esc(x.what||'')}</span></li>`).join('')}</ul></div>`;}).join('')||'<div class="notice">No Message paragraphs this week.</div>';
+  const outHTML=Object.keys(P).map(k=>{const secs=((w[k]&&w[k].sections)||[]).filter(x=>x.src);if(!secs.length)return '';return `<div class="srcgrp"><h3>${P[k]}</h3>${secs.map(x=>`<p class="used">used in “${esc(x.h)}”</p><ul>${String(x.src).split(' · ').map(y=>`<li>${esc(y)}</li>`).join('')}</ul>`).join('')}</div>`;}).join('')||'<div class="notice">None this week.</div>';
+  const pics=(w.images||[]).map(i=>`<li><b>${esc(i.title||'')}</b>${i.artist||i.date?` — ${esc([i.artist,i.date].filter(Boolean).join(', '))}`:''}<br><span class="what">${esc([i.source,i.license].filter(Boolean).join(' · '))}</span></li>`).join('');
+  const extra=(w.credits||[]).map(c=>`<li>${esc(c)}</li>`).join('');
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><div class="kicker">Sources · Week ${n}</div><h1 style="font-size:24px">${esc(w.title)}</h1><div class="always">Everything this week's pages lean on, with the authors. On the lesson pages the sources stay out of sight so the story can be read; here they are all named so you can go and check for yourself.</div>${verse('dust')}</div>
+   <div class="panel"><h2>Scripture</h2><p class="sub">the passages walked this week — the Bible controls everything else on this page</p>${scrHTML}</div>
+   <div class="panel" style="margin-top:14px"><h2>The Message</h2><p class="sub">sermons of ${esc(w.messageAuthor||'William Marrion Branham (Brother Branham)')} — every sermon discussed this week</p><p style="color:var(--mist);font-size:14px;margin-bottom:8px">On the lesson pages the Message is brought in as teaching, in our own words — what it says, never a quotation — and only where the Bible carries it. These are the sermons those paragraphs stand on, so you can go and hear them yourself.</p>${serHTML}</div>
+   <div class="panel" style="margin-top:14px"><h2>Outside sources</h2><p class="sub">history, language and context — the authors and the works, by the page they served; structure and history, never doctrine</p>${outHTML}</div>
+   <div class="panel" style="margin-top:14px"><h2>Pictures &amp; maps</h2><p class="sub">real depictions, drawn from open collections — the artist, the collection, the licence</p><ul class="piclist">${pics||'<li>Listed with the lesson.</li>'}${extra}</ul></div>
+   ${back}`;
 }
 
 /* ============================================================

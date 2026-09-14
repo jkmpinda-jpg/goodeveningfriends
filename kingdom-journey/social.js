@@ -36,6 +36,17 @@ const DEFAULT_ROOMS=[
 const FOUL=/\b(f+u+c*k+\w*|s+h+i+t+\w*|b+i+t+c+h+\w*|a+s+s+h+o+l+e+\w*|d+a+m+n+\w*|c+u+n+t+\w*|d+i+c+k+h?e?a?d?|p+u+s+s+y+|n+i+g+g+(a|e)+r?\w*|f+a+g+g?o?t?\w*|w+h+o+r+e+\w*|s+l+u+t+\w*|b+a+s+t+a+r+d+\w*|m+o+t+h+e+r+f+\w*|c+o+c+k+s+\w*|t+w+a+t+|r+e+t+a+r+d+\w*)\b/i;
 export const cleanText=t=>!FOUL.test(String(t||''));
 export const fmtTime=s=>{s=Math.max(0,Math.floor(s||0));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+':':'')+String(m).padStart(h?2:1,'0')+':'+String(x).padStart(2,'0');};
+/* a YouTube link, with or without a moment: youtu.be/ID?t=83 · youtube.com/watch?v=ID&t=1m23s · /live/ID · /shorts/ID */
+export function ytParse(u){try{const url=new URL(String(u).trim());const h=url.hostname.replace(/^www\.|^m\./,'');let id='';
+  if(h==='youtu.be')id=url.pathname.slice(1).split('/')[0];else if(h==='youtube.com'||h==='music.youtube.com'){id=url.searchParams.get('v')||'';if(!id){const m=url.pathname.match(/^\/(?:live|shorts|embed)\/([\w-]{6,})/);if(m)id=m[1];}}
+  if(!/^[\w-]{6,}$/.test(id))return null;const raw=url.searchParams.get('t')||url.searchParams.get('start')||'';let t=0;
+  if(/^\d+s?$/.test(raw))t=parseInt(raw);else{const m=raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);if(m&&raw)t=(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0);}
+  return {id,t};}catch(e){return null;}}
+const escT=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* escape a message, then turn links into links — a YouTube link with a moment becomes a ▶ chip */
+export function linkify(text){return escT(text).replace(/\n/g,'<br>').replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)"'\]]/g,u=>{const raw=u.replace(/&amp;/g,'&');const y=ytParse(raw);
+  if(y)return `<a class="clipchip" href="${escT(raw)}" target="_blank" rel="noopener">▶ ${y.t?`the moment at ${fmtTime(y.t)}`:'watch'}</a>`;
+  return `<a href="${escT(raw)}" target="_blank" rel="noopener">${u}</a>`;});}
 
 export function initSocial(ctx){
   const {el,esc,when,go,showSeat,LINKS,resizeImage}=ctx;const verse=ctx.verse||(()=>'');
@@ -66,7 +77,7 @@ export function initSocial(ctx){
     const bar=m.bar?`<div class="barstamp">🍫 Bars! at <b>${fmtTime(m.bar.t)}</b>${m.bar.videoId?` · <a href="https://youtu.be/${esc(m.bar.videoId)}?t=${Math.floor(m.bar.t)}" target="_blank" rel="noopener">open the clip ↗</a>`:''}</div>`:'';
     return `<div class="cm ${mine?'mine':''} ${m.hidden?'hiddenmsg':''}" id="m-${path.replace(/\//g,'_')}">${m.photo?`<img class="av" src="${m.photo}" alt="">`:`<div class="av">${esc((m.name||'?').charAt(0).toUpperCase())}</div>`}
       <div class="body"><div class="head"><b>${esc(m.name||'Friend')}</b>${m.uid&&ctx.adminUids&&ctx.adminUids().includes(m.uid)?'<span class="teacher">teacher</span>':''}<span class="when">${when(m.at)}</span>${m.hidden?'<span class="teacher" style="color:#F2A3A8">hidden</span>':''}</div>
-      ${m.text?`<div class="txt">${esc(m.text).replace(/\n/g,'<br>')}</div>`:''}${bar}${img}${reactionsHTML(m,path)}
+      ${m.text?`<div class="txt">${linkify(m.text)}</div>`:''}${bar}${img}${reactionsHTML(m,path)}
       <div class="tools">${opts.noReport?'':`<button onclick="reportMsg('${path}')" title="Flag for the teacher">⚑</button>`}${adm?`<button onclick="hideMsg('${path}',${m.hidden?'false':'true'})" title="${m.hidden?'Unhide':'Hide'}">${m.hidden?'👁':'🙈'}</button>`:''}${mine?`<button onclick="delMsg('${path}')" title="Delete my message">🗑</button>`:''}</div></div></div>`;}
   window.openReact=(btn,path)=>{document.querySelectorAll('.rxpick').forEach(p=>p.remove());const p=document.createElement('div');p.className='rxpick';
     p.innerHTML=`<div class="rxgrp"><span class="rxlab">Bars!</span>${BARS_EMOJIS.map(e=>`<button onclick="react('${path}','${e}')">${e}</button>`).join('')}</div><div class="rxgrp"><span class="rxlab">otherwise…</span>${VOCAB.map(v=>`<button title="${esc(v.hint)}" onclick="react('${path}','${v.e}')">${v.e}<small>${esc(v.hint)}</small></button>`).join('')}</div>`;
@@ -103,13 +114,20 @@ export function initSocial(ctx){
     if(!sendTarget)return;const {collection,addDoc}=fb().fsM;const m={...me(),text:t.slice(0,2000),at:Date.now(),reactions:{},reactedBy:{},hidden:false};if(pendingImg)m.image=pendingImg;if(extraFields&&typeof extraFields==='object')Object.assign(m,extraFields);
     try{await addDoc(collection(db(),...sendTarget),m);if(ta)ta.value='';pendingImg=null;const st=el('imgStatus');if(st)st.textContent='';}catch(e){alert('Could not send — '+(e.message||e));}};
 
+  /* ---------- how to share a moment from a video (and how Bars work) ---------- */
+  function howtoHTML(open){return `<details class="howto" ${open?'open':''}><summary>How to share a moment from a video</summary>
+      <ol><li><b>Find the second.</b> On YouTube, pause right where it hit. On a computer, right-click the video → <kbd>Copy video URL at current time</kbd>. On a phone, tap <kbd>Share</kbd>, tick <kbd>Start at</kbd>, then <kbd>Copy link</kbd>.</li>
+      <li><b>Paste it in a room</b> — The Campfire, This week, or In the open — with your reaction: the house vocabulary, or your own words. The link turns into a ▶ chip that opens the video at that second.</li>
+      <li><b>If it's Bars, say so.</b> Hit <kbd>🍫 Bars!</kbd> on any message, or go to the <b>Bars</b> room: write the line as you heard it, why it hit, and paste the link to the moment. Bars are all types — a line in a lesson, a moment on the live, a verse you can't shake, a picture, a thought from another walker. Highlight any line on a lesson page and hit Bars! there too.</li></ol>
+      <div class="bars">If you feel it, copy the section of the bars you caught!</div></details>`;}
+
   /* ---------- COMMUNITY page ---------- */
   function renderCommunity(A){
     if(!user()){A.innerHTML=`<div class="lockmsg"><div class="big">🪑</div><p>The Community is for those who have joined the journey.</p><br><button class="btn" onclick="showSeatModal()">Join the journey</button></div>`;return;}
     ensureRooms();
-    A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Community</h1><div class="always">One road, many walkers. Rooms by subject; react with the house vocabulary; flag anything that isn't kind. Pushback belongs <b>in the open</b>, where everyone can see it.</div>${verse('burn')}</div>
+    A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Community</h1><div class="always">One road, many walkers. Rooms by subject; react with the house vocabulary; flag anything that isn't kind. Pushback belongs <b>in the open</b>, where everyone can see it. Caught a moment on a video? Paste the link at that second and say what it did to you — and <b>if you feel it, copy the section of the bars you caught!</b></div>${verse('burn')}</div>
      <div class="cgrid" id="cgrid"><div class="clist"><div class="top"><b>ROOMS</b>${isAdmin()?'<button class="btn sm" onclick="newRoom()">+ Room</button>':''}</div><div id="roomList" style="flex:1;overflow-y:auto"></div>
-       <div class="vocab"><div class="rxlab">the house vocabulary</div><div class="vgrid2">${[{e:'🍫',hint:'Bars!'},...VOCAB].map(v=>`<span title="${esc(v.hint)}">${v.e} <small>${esc(v.hint)}</small></span>`).join('')}</div></div></div>
+       <div class="vocab"><div class="rxlab">the house vocabulary</div><div class="vgrid2">${[{e:'🍫',hint:'Bars!'},...VOCAB].map(v=>`<span title="${esc(v.hint)}">${v.e} <small>${esc(v.hint)}</small></span>`).join('')}</div></div>${howtoHTML()}</div>
       <div class="cthread" id="roomPane"><div class="lockmsg" style="padding:60px 20px">Loading…</div></div></div>`;
     drawRooms();openRoom(activeRoom);
   }
@@ -120,23 +138,24 @@ export function initSocial(ctx){
     if(unsubRoom){unsubRoom();unsubRoom=null;}
     if(r.kind==='bars'){renderBarsRoom(P);return;}
     sendTarget=['rooms',rid,'messages'];
-    P.innerHTML=`<div class="top"><div><b>${esc(r.name)}</b><small>${esc(r.desc||'')}</small></div></div><div class="chat" id="roomChat"><div class="notice">Loading…</div></div>${composerHTML(r.kind==='open'?'Say it in the open — what do you see differently?':'Write to the walkers…')}`;
+    P.innerHTML=`<div class="top"><div><b>${esc(r.name)}</b><small>${esc(r.desc||'')}</small></div></div><div class="chat" id="roomChat"><div class="notice">Loading…</div></div>${composerHTML(r.kind==='open'?'Say it in the open — what do you see differently?':'Write to the walkers… (paste a video link at the second it hit, and say why)')}`;
     const {collection,query,orderBy,limitToLast,onSnapshot}=fb().fsM;
     unsubRoom=onSnapshot(query(collection(db(),'rooms',rid,'messages'),orderBy('at'),limitToLast(300)),qs=>{let h='';qs.forEach(d=>{h+=msgHTML(d.data(),`rooms/${rid}/messages/${d.id}`);});const box=el('roomChat');if(box){const atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<80;box.innerHTML=h||'<div class="notice">Nothing here yet — say good evening.</div>';if(atBottom)box.scrollTop=box.scrollHeight;}},e=>{const box=el('roomChat');if(box)box.innerHTML=`<div class="notice">Could not open the room (${esc(e.code||e.message)}).</div>`;});};
 
   /* ---------- BARS — the collected lines ---------- */
   function barHTML(b,id){const u=user();const mine=u&&b.uid===u.uid;const path=`bars/${id}`;if(b.hidden&&!isAdmin())return '';
-    return `<div class="bar ${mine?'mine':''}"><div class="head">${b.photo?`<img class="av" src="${b.photo}" alt="">`:`<div class="av">${esc((b.name||'?').charAt(0).toUpperCase())}</div>`}<b>${esc(b.name||'Friend')}</b><span class="when">${when(b.at)}</span><span class="src">${b.source==='live'?'live':b.week?`week ${b.week}`:''}${b.t?' · '+fmtTime(b.t):''}</span></div>
+    return `<div class="bar ${mine?'mine':''}"><div class="head">${b.photo?`<img class="av" src="${b.photo}" alt="">`:`<div class="av">${esc((b.name||'?').charAt(0).toUpperCase())}</div>`}<b>${esc(b.name||'Friend')}</b><span class="when">${when(b.at)}</span><span class="src">${b.source==='live'?'live':b.source==='clip'?'from a video':b.week?`week ${b.week}`:''}${b.t?' · '+fmtTime(b.t):''}</span></div>
       ${b.quote?`<div class="q">“${esc(b.quote)}”</div>`:''}${b.note?`<div class="note">${esc(b.note)}</div>`:''}${b.videoId?`<a class="clip" href="https://youtu.be/${esc(b.videoId)}?t=${Math.floor(b.t||0)}" target="_blank" rel="noopener">▶ the moment</a>`:''}
       ${reactionsHTML(b,path)}<div class="tools">${mine?`<button onclick="delBar('${id}')" title="Remove">🗑</button>`:''}${isAdmin()?`<button onclick="hideMsg('${path}',${b.hidden?'false':'true'})">${b.hidden?'👁':'🙈'}</button>`:''}</div></div>`;}
   function renderBarsRoom(P){P.innerHTML=`<div class="top"><div><b>Bars</b><small>the lines that hit — collect them, react to them, the best become the reels</small></div></div><div class="chat" id="barsFeed"><div class="notice">Loading…</div></div>
-     <div class="composer"><div class="row"><textarea id="barQuote" rows="1" placeholder="The line that hit you (a few words, as you heard it)"></textarea></div><div class="row"><input type="text" id="barNote" placeholder="Why it hit (optional)"><input type="text" id="barWhen" placeholder="week or minute (optional)" style="max-width:190px"><button class="btn" onclick="addBarFromRoom()">${BARS_EMOJIS[Math.floor(Math.random()*BARS_EMOJIS.length)]} Bars!</button></div></div>`;
+     <div class="composer"><div class="row"><textarea id="barQuote" rows="1" placeholder="The line that hit you (a few words, as you heard it)"></textarea></div><div class="row"><input type="text" id="barNote" placeholder="Why it hit (optional)"><input type="text" id="barWhen" placeholder="week or minute (optional)" style="max-width:190px"></div><div class="row"><input type="url" id="barLink" placeholder="Link to the moment — a YouTube link copied at that second (optional)"><button class="btn" onclick="addBarFromRoom()">${BARS_EMOJIS[Math.floor(Math.random()*BARS_EMOJIS.length)]} Bars!</button></div><div style="font-size:11px;color:var(--mist-dim)">If you feel it, copy the section of the bars you caught — the line, the why, and the link at that second.</div></div>`;
     const {collection,query,orderBy,limitToLast,onSnapshot}=fb().fsM;
     unsubRoom=onSnapshot(query(collection(db(),'bars'),orderBy('at'),limitToLast(200)),qs=>{let h='';qs.forEach(d=>{h+=barHTML(d.data(),d.id);});const box=el('barsFeed');if(box){box.innerHTML=h||'<div class="notice">No bars yet. When something hits — you know what to do.</div>';box.scrollTop=box.scrollHeight;}},e=>{const box=el('barsFeed');if(box)box.innerHTML=`<div class="notice">Could not load (${esc(e.code||e.message)}).</div>`;});}
   async function addBar(fields){if(!user()){showSeat();return null;}const {collection,addDoc}=fb().fsM;const b={...me(),quote:'',note:'',week:CONFIG().currentWeek||1,source:'week',videoId:'',t:0,at:Date.now(),emoji:BARS_EMOJIS[Math.floor(Math.random()*BARS_EMOJIS.length)],reactions:{},reactedBy:{},hidden:false,...fields};
     if(!cleanText(b.quote+' '+b.note)){alert('Keep it clean, friend.');return null;}const ref=await addDoc(collection(db(),'bars'),b);return ref.id;}
-  window.addBarFromRoom=async()=>{const q=(el('barQuote').value||'').trim(),n=(el('barNote').value||'').trim(),w=(el('barWhen').value||'').trim();if(!q&&!n)return;const wk=parseInt(w);const t=/:/.test(w)?w.split(':').reduce((a,x)=>a*60+parseInt(x||0),0):0;
-    const id=await addBar({quote:q.slice(0,300),note:n.slice(0,500),week:isNaN(wk)?(CONFIG().currentWeek||1):wk,t,source:t?'live':'week'});if(id){el('barQuote').value='';el('barNote').value='';el('barWhen').value='';}};
+  window.addBarFromRoom=async()=>{const q=(el('barQuote').value||'').trim(),n=(el('barNote').value||'').trim(),w=(el('barWhen').value||'').trim(),lk=(el('barLink')&&el('barLink').value||'').trim();if(!q&&!n&&!lk)return;const wk=parseInt(w);let t=/:/.test(w)?w.split(':').reduce((a,x)=>a*60+parseInt(x||0),0):0;
+    const y=lk?ytParse(lk):null;if(lk&&!y){alert('That link is not a YouTube link — copy it from the video at the second it hit.');return;}if(y&&y.t&&!t)t=y.t;
+    const id=await addBar({quote:q.slice(0,300),note:n.slice(0,500),week:isNaN(wk)?(CONFIG().currentWeek||1):wk,t,videoId:y?y.id:'',source:y?'clip':(t?'live':'week')});if(id){el('barQuote').value='';el('barNote').value='';el('barWhen').value='';if(el('barLink'))el('barLink').value='';}};
   window.barsFromSelection=async(week)=>{const sel=(window.getSelection&&String(window.getSelection()))||'';const q=prompt('Bars! — the line that hit (edit if you like):',sel.trim().slice(0,300));if(q===null)return;const n=prompt('Why it hit? (optional)')||'';const id=await addBar({quote:q.trim().slice(0,300),note:n.trim().slice(0,500),week,source:'week'});if(id)toast(`${BARS_EMOJIS[Math.floor(Math.random()*BARS_EMOJIS.length)]} Bars! — kept on your page and shared on the road.`);};
   window.delBar=async id=>{if(!confirm('Remove this bar?'))return;const {doc,deleteDoc}=fb().fsM;await deleteDoc(doc(db(),'bars',id));};
   function toast(t){let x=el('toast');if(!x){x=document.createElement('div');x.id='toast';document.body.appendChild(x);}x.textContent=t;x.classList.add('show');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.remove('show'),2600);}
@@ -210,5 +229,5 @@ export function initSocial(ctx){
   window.closeReport=async id=>{const {doc,updateDoc}=fb().fsM;await updateDoc(doc(db(),'reports',id),{status:'closed',closedAt:Date.now()});const P=el('adminPanel');if(P)renderReview(P);};
 
   function stop(){if(unsubRoom){unsubRoom();unsubRoom=null;}if(unsubHands){unsubHands();unsubHands=null;}clearInterval(window._barsClock);}
-  return {watchLive,onLive,live,renderCommunity,renderLive,renderReview,myBarsHTML,addBar,stop,VOCAB,BARS_EMOJIS};
+  return {watchLive,onLive,live,renderCommunity,renderLive,renderReview,myBarsHTML,addBar,stop,VOCAB,BARS_EMOJIS,howtoHTML,linkify};
 }

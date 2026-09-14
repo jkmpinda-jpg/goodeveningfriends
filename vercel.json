@@ -7,7 +7,7 @@
     { "source": "/tt",   "destination": "https://www.tiktok.com/@goodeveningfriend3", "permanent": false },
     { "source": "/ig",   "destination": "https://www.instagram.com/goodeveningfriends_7/", "permanent": false },
     { "source": "/th",   "destination": "https://www.threads.com/@goodeveningfriends_7", "permanent": false },
-    { "source": "/fb",   "destination": "https://www.facebook.com/goodveningfriends", "permanent": false },
+    { "source": "/fb",   "destination": "https://www.facebook.com/goodeveningfriends7", "permanent": false },
     { "source": "/tw",   "destination": "https://www.twitch.tv/goodeveningfriends7", "permanent": false }
   ],
   "headers": [

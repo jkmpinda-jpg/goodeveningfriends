@@ -7,7 +7,7 @@
       { "source": "/live", "destination": "https://www.youtube.com/@Goodeveningfriends7/live", "type": 302 },
       { "source": "/tt",   "destination": "https://www.tiktok.com/@goodeveningfriend3", "type": 302 },
       { "source": "/ig",   "destination": "https://www.instagram.com/goodeveningfriends_7/", "type": 302 },
-      { "source": "/th",   "destination": "https://www.threads.com/@goodeveningfriends7", "type": 302 },
+      { "source": "/th",   "destination": "https://www.threads.com/@goodeveningfriends_7", "type": 302 },
       { "source": "/fb",   "destination": "https://www.facebook.com/goodeveningfriends7", "type": 302 },
       { "source": "/tw",   "destination": "https://www.twitch.tv/goodeveningfriends7", "type": 302 }
     ]

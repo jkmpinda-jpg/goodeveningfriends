@@ -768,5 +768,159 @@
  "credits": [
   "Pictures: public-domain paintings, drawings and engravings served from Wikimedia Commons; photographs by Oren Rozen (Tel Dan Stele, CC BY-SA 4.0), Osama Shukir Muhammed Amin (Black Obelisk, CC BY-SA 4.0) and Ze’ev Stein / PikiWiki Israel (Shiloh, CC BY 2.5); map by FinnWikiNo and Richardprins (CC BY-SA 3.0).",
   "Word studies follow Strong’s Exhaustive Concordance numbering; meanings are given in the sense the verse uses."
+ ],
+ "scripture": {
+  "parable": {
+   "main": [
+    "Matthew 13:1-23",
+    "Mark 4:1-20",
+    "Luke 8:4-15"
+   ],
+   "also": [
+    "Genesis 1:11-12",
+    "1 Peter 1:23",
+    "Hosea 10:12",
+    "1 Samuel 8:7",
+    "Psalm 1"
+   ]
+  },
+  "trackA": {
+   "main": [
+    "1 Samuel 1-3",
+    "1 Samuel 8",
+    "1 Samuel 16:1-13",
+    "2 Samuel 7",
+    "Psalm 89",
+    "John 19:19-22"
+   ],
+   "also": [
+    "Joshua 18:1",
+    "Judges 21:19",
+    "Deuteronomy 17:14-20",
+    "Psalm 78:60",
+    "Jeremiah 7:12",
+    "1 Samuel 13:1",
+    "1 Samuel 13:19",
+    "2 Samuel 6",
+    "1 Kings 12",
+    "2 Kings 18:14",
+    "2 Kings 19:35-36",
+    "2 Kings 25:7",
+    "Ezra 1",
+    "Psalm 118",
+    "Matthew 1",
+    "Luke 3",
+    "Acts 13:21"
+   ]
+  },
+  "trackB": {
+   "main": [
+    "Genesis 3:15",
+    "Hebrews 11:1-16",
+    "Genesis 14:18-20",
+    "Psalm 110",
+    "Hebrews 7",
+    "Ephesians 5:22-33",
+    "Acts 2",
+    "Revelation 1-3",
+    "Revelation 21-22"
+   ],
+   "also": [
+    "Genesis 2:21-24",
+    "Genesis 4:4",
+    "Genesis 5:24",
+    "Genesis 15:6",
+    "Genesis 24",
+    "Genesis 41:45",
+    "Ruth 4:13-22",
+    "Psalm 45",
+    "Isaiah 54:5",
+    "Hosea 2:19",
+    "Luke 17:20-21",
+    "John 3:29",
+    "Matthew 27:51",
+    "Acts 2:30",
+    "Acts 15:16",
+    "Galatians 3:17",
+    "2 Corinthians 11:2",
+    "1 Peter 1:8",
+    "Hebrews 1"
+   ]
+  }
+ },
+ "messageAuthor": "William Marrion Branham (Brother Branham)",
+ "sermons": [
+  {
+   "title": "The Spoken Word Is The Original Seed",
+   "code": "62-0318M · 62-0318E",
+   "page": "parable",
+   "what": "the Word is a seed and brings forth only after its kind; a creed can sprout but cannot carry God’s life; the Bride is the seed-Word grown up"
+  },
+  {
+   "title": "The Seed Is Not Heir With The Shuck",
+   "code": "65-0218",
+   "page": "parable",
+   "what": "the seed goes into the ground and dies before it multiplies; the harvest is the grain at full stature — Christ’s own character in a believer"
+  },
+  {
+   "title": "The Rejected King",
+   "code": "60-0515M",
+   "page": "trackA",
+   "what": "David anointed long before he was crowned, hunted by the ruling house, gathering the distressed and the discontented in the cave — the pattern of the King rejected now"
+  },
+  {
+   "title": "Christ Is The Mystery Of God Revealed",
+   "code": "63-0728",
+   "page": "trackA",
+   "what": "first the natural, then the spiritual — a natural Israel before a spiritual one; the two kingdoms kept apart and shown to belong to each other; chosen in Him before the foundation of the world"
+  },
+  {
+   "title": "The Seventieth Week Of Daniel",
+   "code": "61-0806",
+   "page": "trackA",
+   "what": "the covenant with David taken literally — the throne in Jerusalem waits for the Son of David; Israel steps back into the story once the Bride is gone"
+  },
+  {
+   "title": "The Feast Of The Trumpets",
+   "code": "64-0719M",
+   "page": "trackA",
+   "what": "Israel gathered again to receive her King"
+  },
+  {
+   "title": "An Exposition Of The Seven Church Ages",
+   "code": "the book, 1965",
+   "page": "trackB",
+   "what": "the seven churches of Revelation read as seven ages, each with its portion of light and its messenger — a Word lost by degrees and restored by degrees"
+  },
+  {
+   "title": "The Revelation Of The Seven Seals",
+   "code": "63-0317E – 63-0324E",
+   "page": "trackB",
+   "what": "the full Word given back in the last age so the Bride can be made ready"
+  },
+  {
+   "title": "The Invisible Union Of The Bride Of Christ",
+   "code": "65-1125",
+   "page": "trackB",
+   "what": "the church and the Bride are not the same company — many are called, few are chosen; a Word-Bride will not settle for a creed"
+  },
+  {
+   "title": "Christ Is Revealed In His Own Word",
+   "code": "65-0822M",
+   "page": "trackB",
+   "what": "the Bride is the Word made flesh in a people"
+  },
+  {
+   "title": "The Rapture",
+   "code": "65-1204",
+   "page": "trackB",
+   "what": "the catching away comes before the trouble, not after it — Enoch taken, the door opened for John"
+  },
+  {
+   "title": "Adoption — the four-part series",
+   "code": "60-0515E · 60-0518 · 60-0522M · 60-0522E",
+   "page": "trackB",
+   "what": "Ephesians 1 — chosen in Him before the foundation of the world; her story begins in the mind of God, not at Pentecost"
+  }
  ]
 }

@@ -3,13 +3,14 @@
    Good evening, friends · goodeveningfriends.com/kingdom-journey
    ------------------------------------------------------------
    v4: the 3D night road (trail3d.js), night→day ambience (ambience.js),
-   welcome pop-up for guests (trail only until they take a seat),
+   welcome pop-up for guests (trail only until they join),
    the Golden Line / the Royal Blue Line, real browser history
    (back button stays on the site), an extensive My Journey page with
    sound & animation switches, and admins managed from the Teacher's Desk.
    ============================================================ */
 import {createTrail} from './trail3d.js';
 import {Ambience} from './ambience.js';
+import {initSocial,BARS_EMOJIS} from './social.js';
 
 const LINKS={
   site:'https://goodeveningfriends.com',
@@ -35,8 +36,29 @@ const PLATFORMS=[
 const LINE={A:{name:'The Golden Line',short:'Golden Line',sub:'the early Davidic timeline',cls:'g',col:'var(--gold-300)'},
             B:{name:'The Royal Blue Line',short:'Royal Blue Line',sub:'the Spiritual Bride timeline',cls:'b',col:'var(--blue-300)'}};
 const AHEAD=5;   // sealed weeks shown past the current one — the road always goes on
+/* the road's own verses — pilgrims and strangers: from God, and back to God through Christ */
+const VERSES={
+ gate:['Strait is the gate, and narrow is the way, which leadeth unto life, and few there be that find it.','Matthew 7:14'],
+ burn:['Did not our heart burn within us, while he talked with us by the way?','Luke 24:32'],
+ cross:['If any man will come after me, let him deny himself, and take up his cross, and follow me.','Matthew 16:24'],
+ pilgrims:['These all died in faith… and confessed that they were strangers and pilgrims on the earth.','Hebrews 11:13'],
+ strangers:['Dearly beloved, I beseech you as strangers and pilgrims, abstain from fleshly lusts, which war against the soul.','1 Peter 2:11'],
+ father:['I came forth from the Father, and am come into the world: again, I leave the world, and go to the Father.','John 16:28'],
+ dust:['Then shall the dust return to the earth as it was: and the spirit shall return unto God who gave it.','Ecclesiastes 12:7'],
+ overcome:['For whatsoever is born of God overcometh the world: and this is the victory that overcometh the world, even our faith.','1 John 5:4'],
+ gathered:['For where two or three are gathered together in my name, there am I in the midst of them.','Matthew 18:20'],
+ reason:['Come now, and let us reason together, saith the LORD.','Isaiah 1:18'],
+ way:['I am the way, the truth, and the life: no man cometh unto the Father, but by me.','John 14:6'],
+ epistle:['Ye are our epistle written in our hearts, known and read of all men.','2 Corinthians 3:2']};
+const verse=k=>{const v=VERSES[k];return v?`<div class="vq road">“${v[0]}”<span>${v[1]}</span></div>`:'';};
+const THEME='Because of Christ we came from God, and through Christ we are going back to God. Pilgrims and strangers on the road — overcoming sin, death, lust and the powers of this world by the straight and narrow way. Few find it.';
+/* the other roads on the channel, and the Bible tools — shared tabs with the front door */
+const SERIES=[['The Kingdom Journey','/kingdom-journey','now'],['The Story of Redemption','https://www.youtube.com/playlist?list=PLwTZqGxvZwdUgWUmwLLlQCPET7-vAtaRC'],['Living in the Spirit','https://www.youtube.com/playlist?list=PLwTZqGxvZwdWaXu0y-WJdWaVm3FaT4sbJ'],['History & Authenticity of the Bible','https://www.youtube.com/playlist?list=PLwTZqGxvZwdUn8NFRdmuGHMvxjF2_l-Jv'],['Christ — the collection','https://www.youtube.com/playlist?list=PLwTZqGxvZwdU53y7E0mIlLsC5dZPivQKD'],['All series','/series']];
+const BIBLE=[['Blue Letter Bible','https://www.blueletterbible.org/'],['ScriptureMark canvas','https://www.scripturemark.org/canvas']];
+const ddHTML=(label,items)=>`<div class="dd"><button type="button" aria-haspopup="true" onclick="this.parentNode.classList.toggle('open');event.stopPropagation()">${label} ▾</button><div class="menu">${items.map(([l,h,k])=>`<a href="${h}" ${h.startsWith('http')?'target="_blank" rel="noopener"':''} class="${k||''}">${l}</a>`).join('')}</div></div>`;
+document.addEventListener('click',()=>document.querySelectorAll('.dd.open').forEach(d=>d.classList.remove('open')));
 
-let fb=null,user=null,db=null,PROFILE=null;
+let fb=null,user=null,db=null,PROFILE=null,social=null;
 let CONFIG={currentWeek:1},WEEKS={},TRAILDATA=[],visited={parable:false,ta:false,tb:false};
 let DEMO_PREVIEW=new URLSearchParams(location.search).get('preview')==='1';
 const REF=new URLSearchParams(location.search).get('ref')||'';
@@ -68,6 +90,17 @@ function journeyPhase(){if(CONFIG.journeyComplete)return 1;const d=CONFIG.dawn||
 let phaseOverride=null;   // admin preview only, never saved
 const phaseNow=()=>phaseOverride!==null?phaseOverride:journeyPhase();
 
+/* ---------------- the road: shared context for social.js ---------------- */
+const SOCIAL_CTX={fb:()=>fb,db:()=>db,user:()=>user,profile:()=>PROFILE,isAdmin:()=>isAdmin(),config:()=>CONFIG,el,esc,when,go:p=>go(p),showSeat:()=>showSeat(),LINKS,verse,resizeImage:(f,S,c)=>resizeImage(f,S,c),adminUids:()=>ADMIN_UIDS};
+let ADMIN_UIDS=[];
+function drawLiveBar(){let bar=el('liveBar');const L=social&&social.live();if(!L||!L.on){if(bar)bar.remove();return;}
+  if(!bar){bar=document.createElement('div');bar.id='liveBar';document.body.insertBefore(bar,document.body.firstChild.nextSibling);}
+  const P=L.platforms||{};bar.innerHTML=`<span class="pulse"></span><b>LIVE NOW</b> <span class="t">Jonathan is on${L.title?' — '+esc(L.title):''}</span><span class="acts"><button class="btn sm" onclick="go('live')">Watch here</button><a href="${LINKS.live}" target="_blank" rel="noopener">YouTube</a>${P.facebook!==false?`<a href="${LINKS.facebook}" target="_blank" rel="noopener">Facebook</a>`:''}${P.twitch!==false?`<a href="${LINKS.twitch}" target="_blank" rel="noopener">Twitch</a>`:''}</span>`;}
+function onLiveChange(L,wasOn){nav();if(view.page==='live')render();
+  if(L.on&&!wasOn){try{if(PREFS.notifyLive&&'Notification' in window&&Notification.permission==='granted'){const n=new Notification('Good evening, friends — Jonathan is live',{body:(L.title||'The lights are on. Come and walk.'),icon:'/assets/mark_192.png',tag:'gef-live'});n.onclick=()=>{window.focus();go('live');};}}catch(e){}
+    try{if(PREFS.sound){const a=el('herald');if(a&&ambStarted){a.volume=0.5;a.currentTime=0;a.play().catch(()=>{});setTimeout(()=>{try{a.pause();}catch(e){}},5000);}}}catch(e){}}}
+window.askNotify=async()=>{if(!('Notification' in window)){alert('This browser does not do notifications.');return;}const p=await Notification.requestPermission();PREFS.notifyLive=p==='granted';savePrefs();const t=el('pfNotify');if(t){t.classList.toggle('on',PREFS.notifyLive);}if(p!=='granted')alert('Notifications are blocked for this site in your browser settings.');};
+
 /* ---------------- boot ---------------- */
 async function boot(){
   try{
@@ -77,7 +110,7 @@ async function boot(){
     const fsM=await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
     const app=appM.initializeApp(cfg.firebaseConfig);
     fb={authM,fsM};db=fsM.getFirestore(app);fb.auth=authM.getAuth(app);
-    loadAdmins();
+    loadAdmins();social=initSocial(SOCIAL_CTX);social.watchLive();social.onLive(onLiveChange);
     authM.onAuthStateChanged(fb.auth,u=>{user=u;if(u){hideModal();ensureProfile(u);watchUnread();}else{PROFILE=null;stopWatches();}render();});
   }catch(e){el('demoBadge').style.display='block';if(DEMO_PREVIEW)user={displayName:'Preview Friend',email:'preview@demo',uid:'demo'};}
   try{
@@ -91,7 +124,7 @@ async function boot(){
 }
 async function loadAdmins(){try{const {doc,getDoc}=fb.fsM;const s=await getDoc(doc(db,'settings','admins'));if(s.exists()){const extra=(s.data().emails||[]).map(e=>String(e).toLowerCase());ADMINS=[...new Set([...ROOT_ADMINS,...extra])];render();}}catch(e){}}
 
-/* ---------------- modal: welcome / take a seat ---------------- */
+/* ---------------- modal: welcome / join the journey ---------------- */
 function showModal(html){el('modalBody').innerHTML=html;el('modal').style.display='flex';}
 function hideModal(){el('modal').style.display='none';}
 window.closeModal=()=>{sessionStorage.setItem('welcomed','1');hideModal();};
@@ -103,11 +136,12 @@ function showWelcome(){showModal(`
    <li class="b">The <b>Royal Blue Line</b> follows the Spiritual Bride — the faith-seed from Abel to the City.</li>
    <li>Every week: a parable, both lines, a quiz, flashcards, your notes, and a private line to the teacher.</li>
   </ul>
-  <p>Take a seat to get the updates and take part. Or just look around — the road is open to walk, the lessons wait for those who sit down.</p>
+  <p class="vq road">“Did not our heart burn within us, while he talked with us by the way?”<span>Luke 24:32</span></p>
+  <p>Join the journey to get the updates and take part. Or just look around — the road is open to walk; the lessons open for those who join. It is a narrow road, and few find it. You found the gate.</p>
   <div class="row"><button class="btn" style="font-size:15px;padding:11px 20px" onclick="signIn(true)">Get updates &amp; take part</button><button class="btn ghost" style="font-size:14px;padding:11px 18px" onclick="lookAround()">Just look around</button></div>`);}
 function showSeat(){showModal(`
-  <h2>Take your seat at the table</h2>
-  <p>The lessons open when you sit down. Sign in with Google to walk every week you've reached, keep your quiz scores, save your notes, vote in polls, and write to Jonathan directly — and, if you'd like, get <b>the Daily Scripture by text</b>.</p>
+  <h2>Join the journey</h2>
+  <p>The lessons open when you join. Sign in with Google to walk every week you've reached, keep your quiz scores, save your notes, vote in polls, and write to Jonathan directly — and, if you'd like, get <b>the Daily Scripture by text</b>.</p>
   <div class="row"><button class="btn" style="font-size:15px;padding:11px 20px" onclick="signIn()">Sign in with Google</button><button class="btn ghost" onclick="closeModal()">Not yet</button></div>`);}
 window.lookAround=()=>{sessionStorage.setItem('welcomed','1');playHerald();hideModal();startSound();};
 window.signIn=async(fromWelcome)=>{if(!fb){alert('Demo mode — deploy with Firebase to enable Google sign-in.');return;}
@@ -147,7 +181,7 @@ function rememberView(){if(!fb||!user||view.page!=='week')return;try{const {doc,
 /* ---------------- routing: real history, so the back button stays on the site ---------------- */
 let view={page:'home',week:1,tab:'overview',story:null};
 let UNREAD={user:0,admin:0};
-const PAGES=['home','week','story','conversations','profile','credits','admin'];
+const PAGES=['home','week','story','conversations','profile','credits','admin','community','live'];
 function routeHash(){if(view.page==='week')return `#week/${view.week}/${view.tab}`;if(view.page==='story')return `#story/${view.story}`;if(view.page==='admin')return `#admin/${view.tab||'inbox'}`;return '#'+view.page;}
 function readRoute(){const h=location.hash.replace('#','');const parts=h.split('/');const p=parts[0];
   if(!PAGES.includes(p)||!p){view.page='home';return;}view.page=p;
@@ -159,6 +193,7 @@ window.addEventListener('popstate',e=>{if(e.state&&e.state.v)view={...e.state.v}
 history.replaceState({v:{...view}},'',location.hash||'#home');
 
 const canSee=n=>!!user&&n<=(CONFIG.currentWeek||1);
+const beforeLaunch=p=>{const la=CONFIG.launchAt?Date.parse(CONFIG.launchAt):null;return !!p&&!!p.joinedAt&&(la?p.joinedAt<la:true);};
 window.go=p=>{view.page=p;view.story=null;if(p==='admin')view.tab='inbox';pushRoute();window.scrollTo({top:0});render();};
 window.openWeek=n=>{if(!user){showSeat();return;}if(!canSee(n))return;view.page='week';view.week=n;view.tab='overview';visited={parable:false,ta:false,tb:false};pushRoute();window.scrollTo({top:0});render();};
 window.openStory=(tr,n)=>{if(!user){showSeat();return;}if(!canSee(n))return;view.page='story';view.story=tr;pushRoute();render();setTimeout(()=>{const c=el('ch'+n);if(c)c.scrollIntoView({behavior:'smooth'});},80);};
@@ -166,13 +201,16 @@ window.setTab=k=>{if(k==='quiz'&&!(visited.parable&&visited.ta&&visited.tb)){ale
   view.tab=k;if(k==='parable')visited.parable=true;if(k==='ta')visited.ta=true;if(k==='tb')visited.tb=true;pushRoute();render();rememberView();};
 
 function nav(){
-  const items=[['home','The Trail'],['week','This Week'],['conversations','Messages'],['profile','My Journey']];
+  const isLive=social&&social.live().on;
+  const items=[['home','The Trail'],['week','This Week'],['live',isLive?'● Live':'Live'],['community','Community'],['conversations','Messages'],['tree','Family Tree'],['profile','My Journey']];
   if(isAdmin())items.push(['admin','Admin']);
   el('nav').innerHTML=items.map(([k,l])=>{const dot=(k==='conversations'&&UNREAD.user)||(k==='admin'&&UNREAD.admin);const on=view.page===k||(k==='week'&&view.page==='story');
-    return `<button class="${on?'on':''}" onclick="go('${k}')">${l}${dot?'<span class="dot"></span>':''}</button>`;}).join('');
+    if(k==='tree')return `<a href="/family-tree/" style="display:inline-block"><button>${l}</button></a>`+ddHTML('Series',SERIES)+ddHTML('Bible',BIBLE);
+    return `<button class="${on?'on':''} ${k==='live'&&isLive?'livenav':''}" onclick="go('${k}')">${l}${dot?'<span class="dot"></span>':''}</button>`;}).join('');
+  drawLiveBar();
   el('authBox').innerHTML=user
    ?`<button class="avatarChip" onclick="go('profile')" title="My journey">${avaHTML('')}<span>${esc(((PROFILE&&PROFILE.name)||user.displayName||user.email||'').split(' ')[0])}</span></button>`
-   :`<button class="btn" onclick="showSeatModal()">Take a seat</button>`;
+   :`<button class="btn" style="white-space:nowrap" onclick="showSeatModal()">Join the journey</button>`;
   el('socialBar').innerHTML=`<a class="live" href="${LINKS.live}" target="_blank" rel="noopener"><i></i>Live</a>`+PLATFORMS.map(([k,l])=>`<a href="${LINKS[k]}" target="_blank" rel="noopener"><i></i>${l}</a>`).join('');
 }
 window.showSeatModal=()=>showSeat();
@@ -190,14 +228,18 @@ function mountTrail(){const canvas=el('trail3d');if(!canvas)return;const weeks=t
   trail=createTrail({canvas,weeks,phase:phaseNow(),animate:PREFS.motion,
     onSelect:(kind,n,open)=>{if(!user){showSeat();return;}if(!open)return;if(kind==='week')openWeek(n);else openStory(kind,n);},
     onHover:h=>{const t=el('hoverTip');if(!t)return;if(!h){t.classList.remove('show');return;}const w=weeks.find(x=>x.n===h.n)||{};
-      t.textContent=h.kind==='week'?`Week ${h.n} — ${w.title}${h.open?' · open the week':(user?' · not yet':' · take a seat to open')}`:`${LINE[h.kind].name} · ${h.kind==='A'?w.a:w.b}${h.open?'':(user?' · sealed':' · take a seat')}`;t.classList.add('show');}});
+      t.textContent=h.kind==='week'?`Week ${h.n} — ${w.title}${h.open?' · open the week':(user?' · not yet':' · join the journey to open')}`:`${LINE[h.kind].name} · ${h.kind==='A'?w.a:w.b}${h.open?'':(user?' · sealed':' · join to open')}`;t.classList.add('show');}});
   if(!trail){canvas.style.display='none';el('trailFallback').style.display='block';el('trailFallback').innerHTML=trailSVG(weeks);return;}
   trailWeeksKey=key;setTimeout(()=>{if(trail)trail.focusWeek(Math.max(1,(CONFIG.currentWeek||1)));},50);
 }
 window.walkTrail=d=>{if(trail)trail.walk(d);};
+window.turnTrail=()=>{if(trail)trail.turn();};
+window.zoomTrail=f=>{if(trail)trail.zoomBy(f);};
+window.skyTrail=()=>{if(!trail)return;trail.setSky(!trail.isSky());drawTrailCtl();};
+window.resetTrail=()=>{if(trail){trail.resetView();trail.focusWeek(Math.max(1,(CONFIG.currentWeek||1)));}drawTrailCtl();};
 window.toggleMotion=()=>{PREFS.motion=!PREFS.motion;savePrefs();if(trail)trail.setAnimate(PREFS.motion);drawTrailCtl();};
 window.toggleSound=async()=>{PREFS.sound=!PREFS.sound;savePrefs();if(PREFS.sound){await startSound();}syncSound();drawTrailCtl();};
-function drawTrailCtl(){const c=el('trailCtl');if(!c)return;c.innerHTML=`<button class="iconbtn" onclick="walkTrail(-0.06)" title="Walk back">▲</button><button class="iconbtn" onclick="walkTrail(0.06)" title="Walk on">▼</button>
+function drawTrailCtl(){const c=el('trailCtl');if(!c)return;const sky=!!(trail&&trail.isSky());c.innerHTML=`<button class="iconbtn" onclick="walkTrail(-0.06)" title="Walk back">▲</button><button class="iconbtn" onclick="walkTrail(0.06)" title="Walk on">▼</button><button class="iconbtn mapbtn" onclick="turnTrail()" title="Turn around">↶ turn</button><button class="iconbtn" onclick="zoomTrail(0.75)" title="Zoom in">＋</button><button class="iconbtn" onclick="zoomTrail(1.33)" title="Zoom out">－</button><button class="iconbtn mapbtn ${sky?'on':''}" onclick="skyTrail()" title="See the road from above — only as far as you have walked">${sky?'⌂ back down':'☁ sky view'}</button><button class="iconbtn" onclick="resetTrail()" title="Reset the view">⟲</button>
   <button class="iconbtn ${PREFS.motion?'on':''}" onclick="toggleMotion()" title="Animation ${PREFS.motion?'on':'off'}">${PREFS.motion?'✦ motion on':'✦ motion off'}</button>
   <button class="iconbtn ${PREFS.sound?'on':''}" onclick="toggleSound()" title="Sound ${PREFS.sound?'on':'off'}">${PREFS.sound?'♪ sound on':'♪ sound off'}</button>`;}
 /* 2D fallback for browsers without WebGL */
@@ -230,7 +272,7 @@ function trailSVG(VIS){
   const ey=170+VIS.length*STEP-40;
   s+=`<rect x="0" y="${ey-20}" width="${W}" height="${H-ey+20}" fill="url(#mist)"/><text x="${xc(ey+60)}" y="${ey+70}" text-anchor="middle" font-size="14" font-style="italic" font-family="Cormorant Garamond,serif" fill="#A7B4D1" opacity="0.9">the trail goes on…</text>`;
   return s+`</svg>`;}
-function weekList(weeks){return `<div class="weeklist">${weeks.map(w=>`<div class="wk ${w.open?'':'sealed'}"><div class="n">${w.n}</div><div class="t"><b>${esc(w.title)}</b><small>${w.made?(w.open?'open — click a line to read it':'take a seat to open this week'):'still ahead — sealed until its lesson exists'}</small></div>
+function weekList(weeks){return `<div class="weeklist">${weeks.map(w=>`<div class="wk ${w.open?'':'sealed'}"><div class="n">${w.n}</div><div class="t"><b>${esc(w.title)}</b><small>${w.made?(w.open?'open — click a line to read it':'join the journey to open this week'):'still ahead — sealed until its lesson exists'}</small></div>
    <div class="lines"><button class="lg" onclick="${w.open?`openStory('A',${w.n})`:'showSeatModal()'}">${esc(w.a||LINE.A.short)}</button><button class="lb" onclick="${w.open?`openStory('B',${w.n})`:'showSeatModal()'}">${esc(w.b||LINE.B.short)}</button>${w.open?`<button class="btn sm" onclick="openWeek(${w.n})">Open week ${w.n}</button>`:''}</div></div>`).join('')}</div>`;}
 
 /* ---------------- render ---------------- */
@@ -244,32 +286,38 @@ function render(){
     A.innerHTML=`
      <div class="hero"><div class="kicker">a series from Good evening, friends</div><h1>The Kingdom <i>Journey</i></h1>
       <div class="tag">Two kingdoms. One King.</div><div class="rule"></div>
-      <div class="always">Tracing the earthly throne and the heavenly kingdom, side by side. You were always part of this Kingdom.</div></div>
-     <div id="trailWrap"><div class="trailhead"><b>THE TRAIL</b><span class="mono">${user?'drag or scroll to walk · click a stone to read that line · click a number to open the week':'walk the road freely — take a seat to open the lessons'}</span><div class="ctl" id="trailCtl"></div></div>
-      <canvas id="trail3d" aria-label="The trail — a night road with a milestone for each week"></canvas><div id="trailFallback" style="display:none"></div><div id="hoverTip"></div>
-      <div class="trailfoot"><span class="legend"><i class="g"></i>${LINE.A.name} — ${LINE.A.sub}<i class="b"></i>${LINE.B.name} — ${LINE.B.sub}</span><span>It is evening on the road. The sky turns toward morning as the journey goes on.</span></div></div>
+      <div class="always">Tracing the earthly throne and the heavenly kingdom, side by side. You were always part of this Kingdom.</div>
+      <div class="theme">${THEME}</div>${verse('gate')}</div>
+     <div id="trailWrap"><div class="trailhead"><b>THE TRAIL</b><span class="mono">${user?'drag up or down to walk · drag sideways to pivot · scroll to walk · pinch or ⌃scroll to zoom · click a number or a stone':'walk the road freely — drag to walk or pivot, scroll, pinch to zoom · join the journey to open the lessons'}</span><div class="ctl" id="trailCtl"></div></div>
+      <div class="trailstage"><canvas id="trail3d" aria-label="The trail — a night road with a milestone for each week"></canvas><div class="trailhint">double-click the road to turn around · Home key resets</div><div id="trailFallback" style="display:none"></div><div id="hoverTip"></div></div>
+      <div class="trailfoot"><span class="legend"><i class="g"></i>${LINE.A.name} — ${LINE.A.sub}<i class="b"></i>${LINE.B.name} — ${LINE.B.sub}</span><span>It is evening on the road. The sky turns toward morning as the journey goes on.</span></div>${verse('father')}</div>
      ${weekList(weeks)}
+     <div class="panel walkus" style="margin-top:18px"><h2>Walk with us</h2><p class="sub">the habits of the road — five small things that carry this the whole way</p>
+      <div class="habits"><a href="${LINKS.youtube}?sub_confirmation=1" target="_blank" rel="noopener"><b>Subscribe</b><span>the lessons land on YouTube first</span></a><a href="${LINKS.youtube}" target="_blank" rel="noopener"><b>Like &amp; comment</b><span>on every lesson — it is how the road gets found</span></a><a href="#" onclick="${user?'inviteFriend()':'showSeatModal()'};return false"><b>Share</b><span>send a friend your invite</span></a><a href="#" onclick="go('live');return false"><b>Be there live</b><span>the lights come on — the banner will tell you</span></a><a href="#" onclick="go('community');return false"><b>Add to the conversation</b><span>in the open, on the road — and Bars!</span></a></div></div>
      <div class="notice">Left stone = the <b style="color:var(--gold-300)">Golden Line</b> chapter · right stone = the <b style="color:var(--blue-300)">Royal Blue Line</b> chapter. Glass stones are the next few weeks — visible, sealed until their lesson exists. The road keeps going past the last lantern.</div>
      <div class="panel" style="margin-top:18px"><h2>Find the road wherever you are</h2><p class="sub">one journey, every platform — the lessons live on YouTube, everything else carries the breadcrumbs</p>
       <div class="findus">${PLATFORMS.map(([k,l,d])=>`<a class="tile" href="${LINKS[k]}" target="_blank" rel="noopener"><img src="/assets/tile_${k}.png" alt="${l}" loading="lazy"><span>${l}</span><small>${d}</small></a>`).join('')}</div></div>`;
     drawTrailCtl();mountTrail();
   }
   if(view.page==='story'){
-    if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">🔒</div><p>The lines open when you take a seat.</p><br><button class="btn" onclick="showSeatModal()">Take a seat</button></div>`;return;}
+    if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">🔒</div><p>The lines open when you join the journey.</p><br><button class="btn" onclick="showSeatModal()">Join the journey</button></div>`;return;}
     const tr=view.story;let chapters='';
     for(let n=1;n<=CONFIG.currentWeek;n++){if(!canSee(n))continue;const wk=WEEKS[n];if(!wk)continue;
       chapters+=`<div id="ch${n}" class="panel" style="margin-bottom:14px"><div class="mono" style="font-size:11px;color:var(--mist-dim);letter-spacing:.14em">CHAPTER ${n} · ${esc(wk.title).toUpperCase()}</div><p class="serif" style="line-height:1.75;margin-top:8px;font-size:19px">${tr==='A'?wk.storyA:wk.storyB}</p></div>`;}
-    A.innerHTML=`<div class="hero"><h1 style="font-size:30px;color:${LINE[tr].col}">${LINE[tr].name}</h1><div class="tag" style="font-size:19px">${LINE[tr].sub} — ${tr==='A'?'blood history, running to the Cross, then Israel to the crown':'Spirit history, running from the Cross to the City'}</div></div>${chapters}<div class="lockmsg" style="padding:22px">— the line continues as the weeks unlock —</div><center><button class="btn ghost" onclick="go('home')">↩ Back to the trail</button></center>`;
+    A.innerHTML=`<div class="hero"><h1 style="font-size:30px;color:${LINE[tr].col}">${LINE[tr].name}</h1><div class="tag" style="font-size:19px">${LINE[tr].sub} — ${tr==='A'?'blood history, running to the Cross, then Israel to the crown':'Spirit history, running from the Cross to the City'}</div>${verse('pilgrims')}</div>${chapters}<div class="lockmsg" style="padding:22px">— the line continues as the weeks unlock —</div><center><button class="btn ghost" onclick="go('home')">↩ Back to the trail</button></center>`;
   }
   if(view.page==='week'){
-    if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">🔒</div><p>The lessons open when you take a seat. Until then, walk the trail.</p><br><button class="btn" onclick="showSeatModal()">Take a seat</button> <button class="btn ghost" onclick="go('home')">Back to the trail</button></div>`;return;}
+    if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">🔒</div><p>The lessons open when you join the journey. Until then, walk the trail.</p><br><button class="btn" onclick="showSeatModal()">Join the journey</button> <button class="btn ghost" onclick="go('home')">Back to the trail</button></div>`;return;}
     if(!canSee(view.week)||!w){A.innerHTML=`<div class="lockmsg"><div class="big">🔒</div><p>That week is still ahead.</p><br><button class="btn ghost" onclick="go('home')">Back to the trail</button></div>`;return;}
     const quizReady=visited.parable&&visited.ta&&visited.tb;
-    const tabs=[['overview','Overview',''],['parable','Parable',''],['ta',LINE.A.short,'g'],['tb',LINE.B.short,'b'],['quiz',quizReady?'Quiz':'Quiz 🔒',''],['flash','Flashcards',''],['snips','Snippets',''],['notes','My Notes',''],['poll','Poll','']];
-    A.innerHTML=`<h2 class="disp" style="margin-top:8px;font-size:20px">Week ${w.n} — ${esc(w.title)}</h2><div class="serif" style="color:var(--gold-300);font-style:italic;font-size:18px">${esc(w.psalm)}</div>
+    const tabs=[['overview','Overview',''],['parable','Parable',''],['ta',LINE.A.short,'g'],['tb',LINE.B.short,'b'],['pics','Pictures & maps',''],['quiz',quizReady?'Quiz':'Quiz 🔒',''],['flash','Flashcards',''],['snips','Snippets',''],['notes','My Notes',''],['poll','Poll','']];
+    A.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><h2 class="disp" style="margin-top:8px;font-size:20px">Week ${w.n} — ${esc(w.title)}</h2><div class="serif" style="color:var(--gold-300);font-style:italic;font-size:18px">${esc(w.psalm)}</div><div class="roadverse">“${VERSES.cross[0]}” <span>${VERSES.cross[1]}</span></div></div><button class="btn barsbtn" onclick="barsFromSelection(${w.n})" title="Highlight a line, then hit it">${BARS_EMOJIS[Math.floor(Math.random()*BARS_EMOJIS.length)]} Bars!</button></div>
      <div class="tabs">${tabs.map(([k,l,c])=>`<button class="${view.tab===k?'on':''} ${c} ${k==='quiz'&&!quizReady?'lockt':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div><div class="panel" id="tabPanel"></div>`;
     renderTab(w);
   }
+  if(social)social.stop();
+  if(view.page==='community'){if(social)social.renderCommunity(A);else A.innerHTML='<div class="lockmsg">Community opens on the live site.</div>';}
+  if(view.page==='live'){if(social)social.renderLive(A);else A.innerHTML='<div class="lockmsg">Live opens on the live site.</div>';}
   if(view.page==='conversations')renderConversations();
   if(view.page==='profile')renderProfile();
   if(view.page==='credits')renderCredits();
@@ -278,22 +326,26 @@ function render(){
 
 function creditsBlock(w){
   const L={bible:'Scripture',msg:'The Message — paraphrased',out:'History & context',int:'Open question'};
-  const secs=(w.parable&&w.parable.sections||[]).map(s=>`<li><b>${esc(s.h)}</b> — ${L[s.lbl]||s.lbl}</li>`).join('');
+  const all=[...(w.parable&&w.parable.sections||[]),...(w.trackA&&w.trackA.sections||[]),...(w.trackB&&w.trackB.sections||[])];
+  const secs=all.map(s=>`<li><b>${esc(s.h)}</b> — ${L[s.lbl]||s.lbl}${s.src?`<br><span style="color:var(--mist-dim)">${esc(s.src)}</span>`:''}</li>`).join('');
   const extra=(w.credits||[]).map(c=>`<li>${esc(c)}</li>`).join('');
   return `<details class="credits"><summary>Sources &amp; labels for this week</summary><ul>${secs}${extra}<li>Scripture references and full source notes live on the <a href="#credits" onclick="go('credits');return false">Credits &amp; sources</a> page.</li></ul></details>`;
 }
 const LBL={bible:'The Bible',msg:'The Message',out:'Outside sources',int:'Open question'};
 function renderTab(w){
-  const P=el('tabPanel'),t=view.tab;
+  const P=el('tabPanel'),t=view.tab;if(t==='parable')visited.parable=true;if(t==='ta')visited.ta=true;if(t==='tb')visited.tb=true;
   if(t==='overview')P.innerHTML=`<h2>Overview</h2><p class="sub">the week at a glance</p>
    ${w.videoUrl?`<p><a class="btn blue" href="${w.videoUrl}" target="_blank" rel="noopener">▶ Watch the lesson</a></p><br>`:`<div class="notice">The video appears here when the episode premieres. Until then, follow the road on <a href="${LINKS.youtube}" target="_blank" rel="noopener">YouTube</a>.</div>`}
    <div class="study"><p>${w.overview}</p></div><div class="vq">${w.snippets[0].x}<span>${esc(cleanRef(w.snippets[0].r))}</span></div>
    <div class="notice"><b>Action of the week:</b> ${esc(w.action)}</div><div class="notice">Path to the quiz: read the <b>Parable</b> → walk the <b style="color:var(--gold-300)">${LINE.A.name}</b> → walk the <b style="color:var(--blue-300)">${LINE.B.name}</b> → the Quiz unlocks.</div>${creditsBlock(w)}`;
   if(t==='parable')P.innerHTML=`<h2>${esc(w.parable.name)}</h2><p class="sub">the in-depth study — deeper than the broadcast</p><div class="study">${w.parable.sections.map(s=>`<h3><span class="lbl ${s.lbl}">${LBL[s.lbl]||s.lbl}</span>${esc(s.h)}</h3><p>${s.t}</p>`).join('')}</div>${creditsBlock(w)}`;
-  if(t==='ta')P.innerHTML=`<h2 style="color:var(--gold-300)">${LINE.A.name} — ${esc(w.trackA.title)}</h2><p class="sub">${LINE.A.sub} · this week's stretch of the road</p><div class="study"><p>${w.trackA.t}</p></div><center><button class="btn ghost" onclick="openStory('A',${w.n})">Read the whole Golden Line so far →</button></center>`;
-  if(t==='tb')P.innerHTML=`<h2 style="color:var(--blue-300)">${LINE.B.name} — ${esc(w.trackB.title)}</h2><p class="sub">${LINE.B.sub} · this week's stretch of the road</p><div class="study"><p>${w.trackB.t}</p></div><center><button class="btn ghost" style="border-color:rgba(134,170,245,.5);color:var(--blue-300)" onclick="openStory('B',${w.n})">Read the whole Royal Blue Line so far →</button></center>`;
-  if(t==='quiz'){window._q={i:0,score:0};P.innerHTML=`<h2>Quiz</h2><p class="sub">retake any time — your highest score is kept</p><div id="quizBox"></div>`;drawQuiz(w);}
-  if(t==='flash')P.innerHTML=`<h2>Flashcards</h2><p class="sub">terms, names, verses — tap to flip</p><div class="fcgrid">${w.flash.map(c=>`<div class="fc" onclick="this.classList.toggle('fl')"><div class="in"><div class="f">${esc(c.f)}</div><div class="b">${esc(c.b)}</div></div></div>`).join('')}</div>`;
+  const lineHTML=(tr,tk)=>{const L2=LINE[tr];const secs=(tk.sections||[]).map(s=>`<h3><span class="lbl ${s.lbl}">${LBL[s.lbl]||s.lbl}</span>${esc(s.h)}</h3><p>${s.t}</p>`).join('');
+    return `<h2 style="color:${L2.col}">${L2.name} — ${esc(tk.title)}</h2><p class="sub">${L2.sub} · this week's stretch of the road</p><div class="study"><p>${tk.t}</p>${secs}</div><center><button class="btn ghost" ${tr==='B'?'style="border-color:rgba(134,170,245,.5);color:var(--blue-300)"':''} onclick="openStory('${tr}',${w.n})">Read the whole ${L2.name} so far →</button></center>${creditsBlock(w)}`;};
+  if(t==='ta')P.innerHTML=lineHTML('A',w.trackA);
+  if(t==='tb')P.innerHTML=lineHTML('B',w.trackB);
+  if(t==='pics')renderPics(w);
+  if(t==='quiz'){P.innerHTML=`<h2>Quiz</h2><p class="sub">${w.quiz.length} questions — the Parable, the Golden Line, the Royal Blue Line. Answer them all, then submit. Stuck? The answers are in those three pages, not here.</p><div id="quizBox"></div>`;drawQuiz(w);}
+  if(t==='flash')renderFlash(w);
   if(t==='snips')P.innerHTML=`<h2>Snippets</h2><p class="sub">the shareable moments — pass them on</p>${w.snippets.map((s,i)=>`<div class="snip"><b>${esc(s.t)}</b><div class="x">${s.x}</div><div style="font-size:11.5px;color:var(--mist-dim);letter-spacing:.06em">${esc(cleanRef(s.r))}</div>
    <div class="sharebar"><button class="btn ghost sm" onclick="shareSnip(${i})">Share ↗</button><button class="btn ghost sm" onclick="copySnip(${i})">Copy</button>${s.short?`<a class="btn blue sm" href="${s.short}" target="_blank" rel="noopener">▶ Watch the Short</a>`:''}</div></div>`).join('')}`;
   if(t==='notes')renderNotes(w);
@@ -301,15 +353,41 @@ function renderTab(w){
   window.shareSnip=async i=>{const s=w.snippets[i];const txt=`${s.x} — ${cleanRef(s.r)}\n${LINKS.hub}`;if(navigator.share){try{await navigator.share({text:txt});}catch(e){}}else{await navigator.clipboard.writeText(txt);alert('Copied — paste it anywhere.');}};
   window.copySnip=async i=>{const s=w.snippets[i];await navigator.clipboard.writeText(`${s.x} — ${cleanRef(s.r)}`);alert('Copied.');};
 }
-/* quiz */
-function drawQuiz(w){const s=window._q,box=el('quizBox');
-  if(s.i>=w.quiz.length){box.innerHTML=`<div class="score">You scored ${s.score} / ${w.quiz.length}${s.score===w.quiz.length?' — perfect. The trail remembers.':' — well walked. Flip the flashcards and take it again; only your best survives.'}</div><br><button class="btn ghost" onclick="setTab('quiz')">Retake</button>`;if(user&&fb)saveScore(w.n,s.score,w.quiz.length);return;}
-  const q=w.quiz[s.i];box.innerHTML=`<div class="q"><b>${s.i+1}. ${esc(q.q)}</b>${q.opts.map((o,j)=>`<button class="opt" onclick="answer(${j})">${esc(o)}</button>`).join('')}</div><div style="font-size:12px;color:var(--mist-dim)">Question ${s.i+1} of ${w.quiz.length}</div>`;
-  window.answer=j=>{const btns=box.querySelectorAll('.opt');btns.forEach((b,k)=>{if(k===q.a)b.classList.add('correct');else if(k===j)b.classList.add('wrong');b.disabled=true;});if(j===q.a)s.score++;setTimeout(()=>{s.i++;drawQuiz(w);},850);};}
+/* quiz — all the questions on one page, one submit */
+const SETNAME={parable:'The Parable',A:LINE.A.name,B:LINE.B.name};
+function drawQuiz(w){const box=el('quizBox');const sets=['parable','A','B'];const qs=w.quiz.map((q,i)=>({...q,i}));
+  box.innerHTML=sets.map(set=>{const list=qs.filter(q=>(q.set||'parable')===set);if(!list.length)return '';
+    return `<div class="qset ${set==='A'?'g':set==='B'?'b':''}"><h3>${SETNAME[set]}</h3>${list.map(q=>`<div class="q" id="q${q.i}"><b>${q.i+1}. ${esc(q.q)}</b>${q.opts.map((o,j)=>`<label class="opt"><input type="radio" name="q${q.i}" value="${j}"> ${esc(o)}</label>`).join('')}<div class="qres" id="qr${q.i}"></div></div>`).join('')}</div>`;}).join('')+
+    `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px"><button class="btn" onclick="submitQuiz(${w.n})">Submit my answers</button><span id="quizNote" style="font-size:12.5px;color:var(--mist-dim)">Hints live on the Parable, Golden Line and Royal Blue Line pages.</span></div><div class="score" id="quizScore"></div>`;}
+window.submitQuiz=n=>{const w=WEEKS[n];let score=0,missing=[];w.quiz.forEach((q,i)=>{const pick=document.querySelector(`input[name=q${i}]:checked`);if(!pick){missing.push(i+1);return;}const j=parseInt(pick.value);const R=el('qr'+i);
+    document.querySelectorAll(`#q${i} .opt`).forEach((l,k)=>{l.classList.remove('correct','wrong');if(k===q.a)l.classList.add('correct');else if(k===j)l.classList.add('wrong');});
+    if(j===q.a){score++;R.textContent='✓';R.className='qres ok';}else{R.textContent='look again — '+(SETNAME[q.set||'parable']);R.className='qres no';}});
+  if(missing.length){el('quizNote').textContent=`Answer every question first — missing ${missing.join(', ')}.`;return;}
+  document.querySelectorAll('#quizBox input').forEach(i=>i.disabled=true);
+  el('quizScore').innerHTML=`You scored <b>${score} / ${w.quiz.length}</b>${score===w.quiz.length?' — perfect. The trail remembers.':' — well walked. Read the three pages again and retake; only your best survives.'} <button class="btn ghost sm" onclick="setTab('quiz')">Retake</button>`;
+  if(user&&fb)saveScore(n,score,w.quiz.length);};
+/* flashcards — dealt in, shuffled, filtered by kind */
+const FCAT={strongs:"Strong's",people:'People',history:'History',verse:'Verses',image:'Pictures',term:'Terms'};
+let fcFilter='all',fcOrder=null;
+function renderFlash(w){const P=el('tabPanel');const cards=w.flash.map((c,i)=>({...c,i}));const cats=[...new Set(cards.map(c=>c.cat||'term'))];
+  if(!fcOrder||fcOrder.length!==cards.length)fcOrder=cards.map(c=>c.i);
+  const list=fcOrder.map(i=>cards[i]).filter(c=>fcFilter==='all'||(c.cat||'term')===fcFilter);
+  P.innerHTML=`<h2>Flashcards</h2><p class="sub">${cards.length} cards — words as the Bible uses them, the people, the history, the pictures. Tap to flip.</p>
+   <div class="tabs" style="margin:6px 0 14px"><button class="${fcFilter==='all'?'on':''}" onclick="fcSet('all')">All ${cards.length}</button>${cats.map(c=>`<button class="${fcFilter===c?'on':''}" onclick="fcSet('${c}')">${FCAT[c]||c} ${cards.filter(x=>(x.cat||'term')===c).length}</button>`).join('')}<button onclick="fcShuffle()">⇄ Shuffle</button><span id="fcProg" style="align-self:center;font-size:12px;color:var(--mist-dim)"></span></div>
+   <div class="fcgrid">${list.map((c,k)=>`<div class="fc deal" style="animation-delay:${Math.min(k,24)*45}ms" onclick="this.classList.toggle('fl');fcCount()"><div class="in"><div class="f">${c.cat?`<span class="fcat">${FCAT[c.cat]||c.cat}</span>`:''}${esc(c.f)}</div><div class="b">${c.img?`<img src="${esc(c.img)}" alt="" loading="lazy">`:''}<div>${esc(c.b)}${c.ref?`<small>${esc(c.ref)}</small>`:''}</div></div></div></div>`).join('')}</div>`;fcCount();}
+window.fcSet=c=>{fcFilter=c;render();};
+window.fcShuffle=()=>{for(let i=fcOrder.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[fcOrder[i],fcOrder[j]]=[fcOrder[j],fcOrder[i]];}render();};
+window.fcCount=()=>{const all=document.querySelectorAll('.fc').length,fl=document.querySelectorAll('.fc.fl').length;const p=el('fcProg');if(p)p.textContent=`${fl} of ${all} flipped`;};
+/* pictures & maps — authentic images only: the week's own list plus what the teacher kept in the vault */
+async function renderPics(w){const P=el('tabPanel');const own=w.images||[];
+  const card=v=>`<figure class="pic"><img src="${esc(v.thumb||v.src)}" alt="${esc(v.title||'')}" loading="lazy" onclick="openLightbox('${esc(v.src)}','${esc([v.title,v.artist,v.date].filter(Boolean).join(' · '))}')"><figcaption><b>${esc(v.title||'Untitled')}</b>${v.artist||v.date?`<span>${esc([v.artist,v.date].filter(Boolean).join(' · '))}</span>`:''}${v.note?`<em>${esc(v.note)}</em>`:''}<small>${esc([v.source,v.license].filter(Boolean).join(' · '))}</small></figcaption></figure>`;
+  P.innerHTML=`<h2>Pictures &amp; maps</h2><p class="sub">real depictions only — photographs, paintings, engravings, maps, detailed drawings. Credits sit on each picture and on the Credits page.</p><div class="picgrid" id="picGrid">${own.map(card).join('')}</div><div id="picVault"></div>`;
+  if(!fb)return;try{const {collection,getDocs,query,where}=fb.fsM;const qs=await getDocs(query(collection(db,'vault'),where('week','==',String(w.n))));let h='';qs.forEach(d=>h+=card(d.data()));
+    const V=el('picVault');if(V){if(h)V.innerHTML=`<div class="picgrid" style="margin-top:12px">${h}</div>`;else if(!own.length)V.innerHTML='<div class="notice">Pictures and maps for this week are being gathered.</div>';}}catch(e){}}
 async function saveScore(n,score,total){const {doc,getDoc,setDoc}=fb.fsM;const ref=doc(db,'users',user.uid,'scores','week'+n);const prev=await getDoc(ref);const best=prev.exists()?Math.max(prev.data().score,score):score;await setDoc(ref,{score:best,total,at:Date.now()},{merge:true});}
 /* notes */
 let demoNotes=[];
-function renderNotes(w){const P=el('tabPanel');if(!user){P.innerHTML='<div class="lockmsg">🔒 Take a seat to keep your study notes.</div>';return;}
+function renderNotes(w){const P=el('tabPanel');if(!user){P.innerHTML='<div class="lockmsg">🔒 Join the journey to keep your study notes.</div>';return;}
   P.innerHTML=`<h2>My Notes — Week ${w.n}</h2><p class="sub">indexed, printable, shareable</p><input type="text" id="nTitle" placeholder="Note title (e.g., The soil test)"><br><br><input type="text" id="nRefs" placeholder="Scripture references (e.g., Mark 4:13; 1 Samuel 8:7)"><br><br><textarea id="nText" rows="4" placeholder="What did God underline for you?"></textarea><br><br>
    <button class="btn" onclick="addNote(${w.n})">Save note</button> <button class="btn ghost" onclick="window.print()">Print</button> <button class="btn ghost" onclick="shareNotes(${w.n})">Share ↗</button><div id="noteList" style="margin-top:16px">Loading…</div>`;loadNotes(w.n);}
 window.addNote=async n=>{const note={title:el('nTitle').value||'Untitled',refs:el('nRefs').value,text:el('nText').value,week:n,at:Date.now()};if(!note.text.trim())return;
@@ -338,8 +416,8 @@ function watchUnread(){if(!fb||!user)return;const {collection,query,where,onSnap
   unsubUnread=onSnapshot(q,qs=>{if(isAdmin())UNREAD.admin=qs.size;else UNREAD.user=qs.size;nav();},()=>{});}
 function renderConversations(){
   const A=el('app');
-  if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">✉</div><p>Take a seat to message Jonathan — questions, testimonies, something you'd like to share. Attach a photo or a file if it helps.</p><br><button class="btn" onclick="showSeatModal()">Take a seat</button></div>`;return;}
-  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Messages</h1><div class="always">A private line to the teacher's desk — one thread per subject, so nothing gets lost. Jonathan reads every message, yes, even the long ones.</div></div>
+  if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">✉</div><p>Join the journey to message Jonathan — questions, testimonies, something you'd like to share. Attach a photo or a file if it helps.</p><br><button class="btn" onclick="showSeatModal()">Join the journey</button></div>`;return;}
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Messages</h1><div class="always">A private line to the teacher's desk — one thread per subject, so nothing gets lost. Jonathan reads every message, yes, even the long ones.</div>${verse('reason')}</div>
    <div class="cgrid ${activeConv?'threadOpen':''}" id="cgrid">
     <div class="clist"><div class="top"><b>SUBJECTS</b><button class="btn sm" onclick="newConversation()">+ New subject</button></div><div id="convList" style="flex:1;overflow-y:auto"><div class="notice" style="margin:12px">Loading…</div></div></div>
     <div class="cthread" id="cthread"><div class="lockmsg" style="padding:60px 20px"><div class="big">💬</div><p>Pick a thread, or start a new one.</p></div></div></div>`;
@@ -388,10 +466,10 @@ window.sendMsg=async()=>{const ta=el('chatText');const t=(ta?ta.value:'').trim()
 let acctPhoto=null;
 const DAYS=['','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 async function renderProfile(){const A=el('app');
-  if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">🚶</div><p>Your journey lives behind your seat at the table.</p><br><button class="btn" onclick="showSeatModal()">Take a seat</button></div>`;return;}
+  if(!user){A.innerHTML=`<div class="lockmsg"><div class="big">🚶</div><p>Your journey begins when you join.</p><br><button class="btn" onclick="showSeatModal()">Join the journey</button></div>`;return;}
   acctPhoto=(PROFILE&&PROFILE.photo)||'';const P=PROFILE||{};
   const sw=(id,label,small,on)=>`<div class="switch"><div class="t">${label}<small>${small}</small></div><div class="toggle ${on?'on':''}" id="${id}" role="switch" aria-checked="${on}" onclick="flipPref('${id}')"></div></div>`;
-  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">My Journey</h1><div class="always">Your seat at the table — how you appear, how you hear from us, how the road behaves, and how far you've walked.</div></div>
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">My Journey</h1><div class="always">Your place on the road — how you appear, how you hear from us, how the road behaves, and how far you've walked.</div>${verse('strangers')}</div>
   <div class="pgrid">
    <div>
     <div class="panel"><h2>Who you are here</h2><p class="sub">this is how you appear on your notes and in conversations</p>
@@ -415,29 +493,31 @@ async function renderProfile(){const A=el('app');
      <div class="field" style="margin-top:4px"><label>Sound level</label><input type="range" min="0" max="1" step="0.05" value="${PREFS.volume}" oninput="setVolume(this.value)"></div>
      ${sw('pfMotion','Animation','Stars twinkle, the stones breathe, the camera sways. Off = a still picture that still walks when you scroll.',PREFS.motion)}
      ${sw('pfBig','Larger text','Bigger reading text across the whole site.',PREFS.bigtext)}
+     <div class="switch"><div class="t">Tell me when Jonathan goes live<small>A browser notification while this site is open in a tab. (Phones: add the site to your home screen first.)</small></div><div class="toggle ${PREFS.notifyLive?'on':''}" id="pfNotify" role="switch" onclick="askNotify()"></div></div>
      <div class="notice" style="margin-bottom:0">The trumpets on the front door play once, on your first tap — the browser rule, not ours.</div></div>
     <div class="panel" style="margin-top:14px"><h2>How far you've walked</h2><p class="sub">everything can be retaken — your best score is kept</p><div class="stat" id="pStats"><div><b>…</b><span>weeks quizzed</span></div><div><b>…</b><span>notes kept</span></div><div><b>…</b><span>best average</span></div></div><div id="myScores">Loading…</div>
-     <div style="font-size:12.5px;color:var(--mist-dim);margin-top:8px">Seated since ${new Date(P.joinedAt||Date.now()).toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'})}${P.restarts?` · restarted ${P.restarts}×`:''}${P.lastView?` · last read: week ${P.lastView.week}`:''}</div>
+     <div style="font-size:12.5px;color:var(--mist-dim);margin-top:8px">On the road since ${new Date(P.joinedAt||Date.now()).toLocaleDateString([],{month:'long',day:'numeric',year:'numeric'})}${beforeLaunch(P)?' · <span style="color:var(--gold-300)">here before the launch</span>':''}${P.restarts?` · restarted ${P.restarts}×`:''}${P.lastView?` · last read: week ${P.lastView.week}`:''}</div>
      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${P.lastView?`<button class="btn sm" onclick="resumeLast()">Continue where I left off</button>`:''}<button class="btn ghost sm" onclick="downloadNotes()">Download all my notes</button><button class="btn danger sm" onclick="restartJourney()">Restart my journey</button></div>
-     <div class="notice" style="margin-top:12px">Restarting clears your quiz scores and notes so you can walk the road again from Week 1. Your account, your seat and your conversations stay.</div></div>
-    <div class="panel" style="margin-top:14px"><h2>Invite friends</h2><p class="sub">the road is better walked together</p><p style="font-size:14px;color:var(--mist);margin-bottom:12px">Send a friend your link. When they take a seat, it is set beside yours.</p>
+     <div class="notice" style="margin-top:12px">Restarting clears your quiz scores and notes so you can walk the road again from Week 1. Your account, your place on the road and your conversations stay.</div></div>
+    <div class="panel" style="margin-top:14px"><h2>My Bars</h2><p class="sub">the lines that hit you — yours to keep; the best become the reels</p><div id="myBars">Loading…</div></div>
+    <div class="panel" style="margin-top:14px"><h2>Invite friends</h2><p class="sub">the road is better walked together</p><p style="font-size:14px;color:var(--mist);margin-bottom:12px">Send a friend your link. When they join, they walk in beside you.</p>
      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="inviteFriend()">Share my invite ↗</button><button class="btn ghost" onclick="copyInvite()">Copy the link</button></div>
      <div class="mono" style="font-size:11.5px;color:var(--mist-dim);margin-top:10px;word-break:break-all">${esc(inviteLink())}</div></div>
     <div class="panel" style="margin-top:14px"><h2>Your data</h2><p class="sub">it is yours</p>
-     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="downloadData()">Download everything I've saved</button><button class="btn danger sm" onclick="deleteSeat()">Delete my seat</button></div>
-     <div class="notice" style="margin-top:12px">Deleting your seat removes your profile, scores, notes and sign-in from this site. Messages you sent stay with the teacher's desk unless you ask for them to be removed.</div></div>
+     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" onclick="downloadData()">Download everything I've saved</button><button class="btn danger sm" onclick="deleteSeat()">Delete my account</button></div>
+     <div class="notice" style="margin-top:12px">Deleting your account removes your profile, scores, notes and sign-in from this site. Messages you sent stay with the teacher's desk unless you ask for them to be removed.</div></div>
    </div></div>`;
-  drawAcctAva();loadProgress();
+  drawAcctAva();loadProgress();if(social)social.myBarsHTML().then(h=>{const b=el('myBars');if(b)b.innerHTML=h;});
 }
 window.flipPref=id=>{const k={pfSound:'sound',pfMotion:'motion',pfBig:'bigtext'}[id];PREFS[k]=!PREFS[k];savePrefs();const t=el(id);if(t){t.classList.toggle('on',PREFS[k]);t.setAttribute('aria-checked',PREFS[k]);}
   if(k==='sound'){if(PREFS.sound)startSound();syncSound();}if(k==='motion'&&trail)trail.setAnimate(PREFS.motion);};
 window.setVolume=v=>{PREFS.volume=parseFloat(v);savePrefs();if(ambStarted)amb.setVolume(PREFS.volume);};
 window.resumeLast=()=>{const lv=PROFILE&&PROFILE.lastView;if(!lv)return;view.page='week';view.week=lv.week;view.tab=lv.tab||'overview';visited={parable:true,ta:true,tb:true};pushRoute();window.scrollTo({top:0});render();};
 function inviteLink(){return `${LINKS.hub}/?ref=${user?user.uid.slice(0,8):''}`;}
-window.inviteFriend=async()=>{const text=`Good evening, friend — I'm walking through the whole Bible on one map, two kingdoms side by side. Come take a seat at the table with me: ${inviteLink()}`;
+window.inviteFriend=async()=>{const text=`Good evening, friend — I'm walking through the whole Bible on one map, two kingdoms side by side. Come walk it with me: ${inviteLink()}`;
   if(navigator.share){try{await navigator.share({title:'The Kingdom Journey',text,url:inviteLink()});return;}catch(e){}}await navigator.clipboard.writeText(text);alert('Invite copied — paste it into a text or a message.');};
 window.copyInvite=async()=>{await navigator.clipboard.writeText(inviteLink());alert('Link copied.');};
-function drawAcctAva(){const R=el('acctAvaRow');if(!R)return;const nm=(el('acctName')&&el('acctName').value)||' ';R.innerHTML=(acctPhoto?`<img class="avaBig" src="${acctPhoto}" alt="">`:`<span class="avaBig init">${esc((nm.trim().charAt(0)||'?').toUpperCase())}</span>`)+`<div style="font-size:13px;color:var(--mist)">Your seat at the table.<br>Change the picture or keep your initial.</div>`;}
+function drawAcctAva(){const R=el('acctAvaRow');if(!R)return;const nm=(el('acctName')&&el('acctName').value)||' ';R.innerHTML=(acctPhoto?`<img class="avaBig" src="${acctPhoto}" alt="">`:`<span class="avaBig init">${esc((nm.trim().charAt(0)||'?').toUpperCase())}</span>`)+`<div style="font-size:13px;color:var(--mist)">Your place on the road.<br>Change the picture or keep your initial.</div>`;}
 window.useGooglePhoto=()=>{acctPhoto=(user&&user.photoURL)||'';drawAcctAva();};
 window.useInitial=()=>{acctPhoto='';drawAcctAva();};
 window.pickPhoto=async ev=>{const f=ev.target.files&&ev.target.files[0];ev.target.value='';if(!f)return;acctPhoto=await resizeImage(f,192,140000);drawAcctAva();};
@@ -462,16 +542,16 @@ window.restartJourney=async()=>{if(!confirm('Restart your journey? Your quiz sco
   for(const sub of ['scores','notes']){const qs=await getDocs(collection(db,'users',user.uid,sub));for(const d of qs.docs)await deleteDoc(d.ref);}
   await setDoc(doc(db,'users',user.uid),{startedAt:Date.now(),restarts:((PROFILE&&PROFILE.restarts)||0)+1,lastView:null},{merge:true});if(PROFILE){PROFILE.restarts=(PROFILE.restarts||0)+1;PROFILE.lastView=null;}
   alert('Your journey starts again at Week 1. Good evening, friend.');go('home');};
-window.deleteSeat=async()=>{if(!fb)return alert('Demo mode.');if(!confirm('Delete your seat? Your profile, scores, notes and sign-in on this site will be removed. This cannot be undone.'))return;if(!confirm('Last check — delete everything now?'))return;
+window.deleteSeat=async()=>{if(!fb)return alert('Demo mode.');if(!confirm('Delete your account? Your profile, scores, notes and sign-in on this site will be removed. This cannot be undone.'))return;if(!confirm('Last check — delete everything now?'))return;
   try{const {collection,getDocs,deleteDoc,doc}=fb.fsM;for(const sub of ['scores','notes']){const qs=await getDocs(collection(db,'users',user.uid,sub));for(const d of qs.docs)await deleteDoc(d.ref);}await deleteDoc(doc(db,'users',user.uid));
-    await fb.authM.deleteUser(fb.auth.currentUser);alert('Your seat is cleared. The door stays open.');user=null;PROFILE=null;go('home');}
-  catch(e){if(e&&e.code==='auth/requires-recent-login'){alert('For safety, sign out and sign in again, then delete your seat.');}else alert('Could not delete right now — write to Jonathan and it will be done by hand.');}};
+    await fb.authM.deleteUser(fb.auth.currentUser);alert('Your account is cleared. The road stays open.');user=null;PROFILE=null;go('home');}
+  catch(e){if(e&&e.code==='auth/requires-recent-login'){alert('For safety, sign out and sign in again, then delete your account.');}else alert('Could not delete right now — write to Jonathan and it will be done by hand.');}};
 
 /* ============================================================
    CREDITS & SOURCES — the closing credits
    ============================================================ */
 async function renderCredits(){const A=el('app');
-  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Credits &amp; Sources</h1><div class="always">The lessons are made to be watched like a story. Everything they lean on is listed here, the way a film lists its credits at the end.</div></div>
+  A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Credits &amp; Sources</h1><div class="always">The lessons are made to be watched like a story. Everything they lean on is listed here, the way a film lists its credits at the end.</div>${verse('dust')}</div>
   <div class="panel"><h2>Scripture</h2><p class="sub">the text the whole journey stands on</p><p style="color:var(--mist);font-size:14.5px">Quotations are from the King James Version. Where a passage is paraphrased for the story, the wording is ours; the meaning is held to the text, two or three witnesses first.</p></div>
   <div class="panel" style="margin-top:14px"><h2>How the studies are built</h2><p class="sub">what carries weight, in order</p><ul style="margin-left:18px;color:var(--mist);font-size:14.5px;line-height:1.7"><li><b style="color:var(--parchment)">The Bible</b> controls doctrine and context.</li><li><b style="color:var(--parchment)">The Message</b> is brought in as teaching, in our own words — what it says, never a quotation, never a date — and only where the Bible carries it.</li><li><b style="color:var(--parchment)">Outside sources</b> — harmonies of Samuel, Kings and Chronicles, archaeology, chronology — provide structure and history, never doctrine.</li><li>Anything still unresolved is said out loud and labelled an <b style="color:var(--parchment)">open question</b>.</li></ul></div>
   <div class="panel" style="margin-top:14px"><h2>Images</h2><p class="sub">real depictions, drawn from open collections</p><div id="imgCredits">Loading…</div></div>
@@ -487,14 +567,16 @@ async function renderCredits(){const A=el('app');
    ============================================================ */
 let MEMBERS=[];
 function renderAdmin(){const A=el('app');if(!isAdmin()){A.innerHTML='<div class="lockmsg">Teacher only.</div>';return;}
-  const t=view.tab&&['inbox','members','vault','tools'].includes(view.tab)?view.tab:'inbox';
+  const t=view.tab&&['inbox','members','review','vault','tools'].includes(view.tab)?view.tab:'inbox';
   A.innerHTML=`<div class="hero" style="padding-top:12px"><h1 style="font-size:24px">Teacher's Desk</h1></div>
-   <div class="tabs">${[['inbox','Messages'],['members','Members'],['vault','Image Vault'],['tools','Tools']].map(([k,l])=>`<button class="${t===k?'on':''}" onclick="adminTab('${k}')">${l}${k==='inbox'&&UNREAD.admin?' ●':''}</button>`).join('')}</div><div id="adminPanel"></div>`;
+   <div class="tabs">${[['inbox','Messages'],['members','Members'],['review','Review'],['vault','Image Vault'],['tools','Tools']].map(([k,l])=>`<button class="${t===k?'on':''}" onclick="adminTab('${k}')">${l}${k==='inbox'&&UNREAD.admin?' ●':''}</button>`).join('')}</div><div id="adminPanel"></div>`;
   const P=el('adminPanel');
   if(t==='inbox'){P.innerHTML=`<div class="cgrid ${activeConv?'threadOpen':''}" id="cgrid"><div class="clist"><div class="top"><b>ALL THREADS</b><span style="font-size:11px;color:var(--mist-dim)">newest first</span></div><div id="convList" style="flex:1;overflow-y:auto"><div class="notice" style="margin:12px">Loading…</div></div></div><div class="cthread" id="cthread"><div class="lockmsg" style="padding:60px 20px"><div class="big">💬</div><p>Pick a thread.</p></div></div></div>`;
     if(fb)listenConvList();if(activeConv)openConv(activeConv.id);}
-  if(t==='members'){P.innerHTML=`<div class="panel"><h2>Members</h2><p class="sub">who has taken a seat</p><div id="mStats" class="notice">Loading…</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px"><button class="btn ghost sm" onclick="copyEmails()">Copy email list (opted-in)</button><button class="btn ghost sm" onclick="copySms()">Copy the Daily Scripture SMS list</button></div><div id="members"></div>
+  if(t==='members'){P.innerHTML=`<div class="panel"><h2>Members</h2><p class="sub">who has joined the journey</p><div id="mStats" class="notice">Loading…</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px"><button class="btn ghost sm" onclick="copyEmails()">Copy email list (opted-in)</button><button class="btn ghost sm" onclick="copySms()">Copy the Daily Scripture SMS list</button><button class="btn ghost sm" onclick="copyLaunch()">Copy the before-launch list</button></div>
+     <div class="notice">Everyone seated before the launch is marked ★ — they get the first updates, and the reminders to subscribe, share, like, comment and be there live. Set <code>launchAt</code> in <code>config.json</code> (an ISO date) once the date is known; until then everyone counts as before-launch.</div><div id="members"></div>
      <h3 style="margin-top:22px;color:var(--gold-300);font-family:var(--ff-display);font-size:14px;letter-spacing:.06em">Daily Scripture — send helper</h3><p class="sub">paste today's verse, copy it, and send it from the sender's phone to the SMS list</p><textarea id="dailyTxt" rows="3" placeholder="THE DAILY SCRIPTURE · 'for they have not rejected thee, but they have rejected me…' — 1 Samuel 8:7. This week: Two Kingdoms, One King."></textarea><br><br><button class="btn" onclick="copyDaily()">Copy today's text message</button></div>`;if(fb)loadMembers();}
+  if(t==='review'){if(social)social.renderReview(P);}
   if(t==='vault')renderVault(P);
   if(t==='tools'){const ph=journeyPhase();P.innerHTML=`<div class="panel"><h2>Tools</h2><p class="sub">the levers</p>
     <div class="notice">Current week: <b>${CONFIG.currentWeek}</b>. To unlock the next week: add <code>content/weekNN.json</code>, raise <code>currentWeek</code> in <code>content/config.json</code>, and push — the site redeploys itself. Titles for the sealed weeks ahead come from <code>content/trail.json</code>.</div>
@@ -515,10 +597,11 @@ window.removeAdmin=async e=>{if(!confirm(`Remove ${e} from the admins?`))return;
 async function loadMembers(){try{const {collection,getDocs}=fb.fsM;const qs=await getDocs(collection(db,'users'));MEMBERS=[];qs.forEach(d=>MEMBERS.push(d.data()));MEMBERS.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     const em=MEMBERS.filter(m=>m.emailOptIn&&m.email).length,sm=MEMBERS.filter(m=>m.smsOptIn&&m.phone).length;
     el('mStats').innerHTML=`<b>${MEMBERS.length}</b> member${MEMBERS.length===1?'':'s'} · <b>${em}</b> email opt-in · <b>${sm}</b> on the Daily Scripture SMS list`;
-    let h=`<div class="mrow head"><span>Name</span><span>Email</span><span>Phone</span><span>✉</span><span>📱</span></div>`;MEMBERS.forEach(m=>{h+=`<div class="mrow"><span>${esc(m.name||'—')}${m.studyDay?`<br><small style="color:var(--mist-dim)">${DAYS[m.studyDay]||''}</small>`:''}</span><span class="mono" style="font-size:11.5px">${esc(m.email||'—')}</span><span class="mono" style="font-size:11.5px">${esc(m.phone||'—')}</span><span>${m.emailOptIn?'✅':'—'}</span><span>${m.smsOptIn&&m.phone?'✅':'—'}</span></div>`;});el('members').innerHTML=h;
+    let h=`<div class="mrow head"><span>Name</span><span>Email</span><span>Phone</span><span>✉</span><span>📱</span></div>`;MEMBERS.forEach(m=>{h+=`<div class="mrow"><span>${beforeLaunch(m)?'<span style="color:var(--gold-300)" title="here before the launch">★</span> ':''}${esc(m.name||'—')}${m.studyDay?`<br><small style="color:var(--mist-dim)">${DAYS[m.studyDay]||''}</small>`:''}</span><span class="mono" style="font-size:11.5px">${esc(m.email||'—')}</span><span class="mono" style="font-size:11.5px">${esc(m.phone||'—')}</span><span>${m.emailOptIn?'✅':'—'}</span><span>${m.smsOptIn&&m.phone?'✅':'—'}</span></div>`;});el('members').innerHTML=h;
   }catch(e){el('mStats').textContent='Could not load members: '+(e.message||e);}}
 function copyTxt(t,msg){navigator.clipboard.writeText(t).then(()=>alert(msg)).catch(()=>prompt('Copy:',t));}
 window.copyEmails=()=>{const L=MEMBERS.filter(m=>m.emailOptIn&&m.email).map(m=>m.email);if(!L.length)return alert('No opted-in emails yet.');copyTxt(L.join(', '),L.length+' email(s) copied — paste into BCC.');};
+window.copyLaunch=()=>{const L=MEMBERS.filter(m=>beforeLaunch(m)&&m.email).map(m=>`${m.name||''} <${m.email}>`);if(!L.length)return alert('Nobody yet.');copyTxt(L.join(', '),L.length+' before-launch member(s) copied.');};
 window.copySms=()=>{const L=MEMBERS.filter(m=>m.smsOptIn&&m.phone).map(m=>m.phone);if(!L.length)return alert('No one on the SMS list yet.');copyTxt(L.join(', '),L.length+' number(s) copied for the Daily Scripture.');};
 window.copyDaily=()=>{const t=el('dailyTxt').value.trim();if(!t)return alert("Paste today's verse first.");copyTxt(t,'Message copied — now copy the SMS list and send.');};
 

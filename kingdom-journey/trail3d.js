@@ -101,7 +101,7 @@ export function createTrail(opts){
   renderer.shadowMap.enabled=hi;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene();const noise=makeNoise(7);
   const camera=new THREE.PerspectiveCamera(48,1,0.1,900);
-  const state={phase,target:phase,animate,t:0,tTarget:0,time:0,hover:null,dead:false,needs:true,envPhase:-1};
+  const state={phase,target:phase,animate,t:0,tTarget:0,time:0,hover:null,dead:false,needs:true,envPhase:-1,yaw:0,yawTarget:0,zoom:1,zoomTarget:1,sky:0,skyTarget:0};
   const pal={cur:mixPal(phase)};const pmrem=new THREE.PMREMGenerator(renderer);
 
   /* --- the road curve --- */
@@ -206,29 +206,48 @@ export function createTrail(opts){
       const lampGlow=glowSprite(w.made?glow:'rgba(120,140,190,1)',w.made?6:3,1);lampGlow.position.copy(post.position).add(new THREE.Vector3(0,2.6,0));g.add(lampGlow);});
     const num=numberSprite(w.n,w.made);num.position.set(0,4.4,0);num.scale.set(2.8,2.8,1);g.add(num);num.userData={kind:'week',n:w.n,open:w.open};pick.push(num);
     const numGlow=glowSprite(w.made?'rgba(240,206,126,1)':'rgba(120,140,190,1)',w.made?7:0.1,0.6);numGlow.position.set(0,4.4,0);numGlow.material.opacity=0.5;g.add(numGlow);
-    if(labels){const title=labelSprite(w.title,{font:'600 30px Inter, system-ui, sans-serif',color:w.made?'#F6F1E6':'#8A98B8',w:640,h:80});title.position.set(0,6.6,0);title.scale.set(9.5,1.2,1);g.add(title);labelSprites.push(title);}
+    if(labels){const title=labelSprite(w.title,{font:'600 30px Inter, system-ui, sans-serif',color:w.made?'#F6F1E6':'#8A98B8',w:640,h:80});title.position.set(0,6.6,0);title.scale.set(9.5,1.2,1);g.add(title);labelSprites.push(title);title.userData={kind:'week',n:w.n,open:w.open,label:true};pick.push(title);}
     /* stones: Golden Line on the left, Royal Blue Line on the right */
     [['A',-8.4,goldMat,'#F0CE7E','GOLDEN LINE'],['B',8.4,blueMat,'#D3E0FC','ROYAL BLUE LINE']].forEach(([kind,off,mat,col,sub])=>{
       const geo=stoneGeometry(noise,w.n*3+(kind==='A'?1:2),2.0);const open=w.made&&w.open;const m=new THREE.Mesh(geo,open?mat:sealedMat);m.castShadow=hi&&open;
       m.position.copy(side.clone().multiplyScalar(off));m.position.y+=1.15;m.rotation.y=w.n*1.3;g.add(m);m.userData={kind,n:w.n,open,base:m.position.y};pick.push(m);stones.push(m);
       if(open){const gl=glowSprite(kind==='A'?'rgba(240,206,126,1)':'rgba(134,170,245,1)',9,0.5);gl.position.copy(m.position);gl.position.y+=0.4;gl.material.opacity=0.55;g.add(gl);m.userData.glow=gl;}
       else{const lock=labelSprite('🔒',{font:'40px sans-serif',w:96,h:96});lock.position.copy(m.position);lock.position.y+=0.6;lock.scale.set(1.5,1.5,1);g.add(lock);}
-      if(labels){const lab=labelSprite(kind==='A'?w.a:w.b,{color:open?col:'#6E7C9C',sub:`${sub} · WK ${w.n}`,subColor:open?'#A7B4D1':'#4d5a75'});lab.position.copy(m.position);lab.position.y+=4.1;lab.scale.set(11,2.2,1);g.add(lab);labelSprites.push(lab);}
+      if(labels){const lab=labelSprite(kind==='A'?w.a:w.b,{color:open?col:'#6E7C9C',sub:`${sub} · WK ${w.n}`,subColor:open?'#A7B4D1':'#4d5a75'});lab.position.copy(m.position);lab.position.y+=4.1;lab.scale.set(11,2.2,1);g.add(lab);labelSprites.push(lab);lab.userData={kind,n:w.n,open,label:true};pick.push(lab);}
     });
   });
   const city=glowSprite('rgba(250,235,198,1)',70,0.3);{const p=curve.getPointAt(0.985);city.position.set(p.x,p.y+16,p.z);city.material.opacity=0.35;scene.add(city);}
+  /* the veil: from the sky, the road beyond what you have unlocked is night — a soft-edged dark sheet over everything ahead */
+  const veil=(()=>{const c=document.createElement('canvas');c.width=4;c.height=256;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,0,256);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.9,'rgba(255,255,255,1)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,4,256);
+    const a=new THREE.CanvasTexture(c);const m=new THREE.MeshBasicMaterial({color:'#04081A',transparent:true,opacity:0,alphaMap:a,depthWrite:false,fog:false,side:THREE.DoubleSide});
+    const len=L+3200;const g2=new THREE.PlaneGeometry(1600,len);g2.rotateX(-Math.PI/2);const mesh=new THREE.Mesh(g2,m);mesh.renderOrder=5;scene.add(mesh);return mesh;})();
+  function placeVeil(){const lo=weeks.filter(w=>w.open).map(w=>w.n).pop()||0;const edge=curve.getPointAt(weekT(Math.max(1,lo||1))).z-26;const len=L+3200;veil.position.set(0,13,edge-len/2);}
+  placeVeil();
 
-  /* --- camera along the road --- */
-  const camPos=new THREE.Vector3(),look=new THREE.Vector3(),tmp=new THREE.Vector3();
+  /* --- camera along the road: walk, pivot (yaw), zoom, and the sky view --- */
+  const camPos=new THREE.Vector3(),look=new THREE.Vector3(),tmp=new THREE.Vector3(),fwd=new THREE.Vector3();
+  const lastMade=weeks.filter(w=>w.made).map(w=>w.n).pop()||1;               // the road is lit this far
+  const lastOpen=weeks.filter(w=>w.open).map(w=>w.n).pop()||0;               // and unlocked this far for this walker
+  const veilPoint=curve.getPointAt(weekT(Math.max(1,lastOpen||1)));           // beyond this point the sky view shows only darkness
+  const FOG_NEAR=50,FOG_FAR=330;
   function placeCamera(){const t=state.t;const p=curve.getPointAt(t);const ahead=curve.getPointAt(Math.min(1,t+0.04));
-    const sway=state.animate?Math.sin(state.time*0.35)*0.3:0;camPos.set(p.x+sway,p.y+4.6,p.z+0.001);look.set(ahead.x,ahead.y+1.6,ahead.z);
+    fwd.subVectors(ahead,p);const dAhead=Math.max(1,fwd.length());fwd.y=0;fwd.normalize();
+    const cy=Math.cos(state.yaw),sy=Math.sin(state.yaw);fwd.set(fwd.x*cy-fwd.z*sy,0,fwd.x*sy+fwd.z*cy);   // pivot around where you stand
+    const z=state.zoom,k=state.sky;                                              // zoom 0.6…4, sky 0…1
+    const height=(4.6*Math.pow(z,1.35))*(1-k)+150*k, back=(7*(z-1))*(1-k)+34*k, reach=dAhead*(1-k)+46*k, lookUp=1.6*(1-k)+0*k;
+    const sway=state.animate&&k<0.5?Math.sin(state.time*0.35)*0.3*(1-k):0;
+    camPos.set(p.x-fwd.x*back+sway,p.y+height,p.z-fwd.z*back+0.001);look.set(p.x+fwd.x*reach,p.y+lookUp,p.z+fwd.z*reach);
     camera.position.lerp(camPos,0.1);camera.lookAt(look);
+    veil.material.opacity=Math.min(0.97,k*1.1);
+    /* the veil: from the sky you only see the road you have unlocked — the rest is night */
+    if(k>0.001){const dv=camera.position.distanceTo(veilPoint);const far=Math.min(FOG_FAR,dv+40+60*(1-k));scene.fog.far=far;scene.fog.near=Math.max(10,far*0.35);}else{scene.fog.near=FOG_NEAR;scene.fog.far=FOG_FAR;}
     const ph=state.phase;const el=-0.1+ph*1.0;const sd=new THREE.Vector3(0.35,Math.sin(el),-Math.cos(el)).normalize();skyU.sunDir.value.copy(sd);
     sun.position.copy(sd).multiplyScalar(385);sunDisc.position.copy(sd).multiplyScalar(375);sunDisc.lookAt(0,0,0);
     dir.position.copy(camera.position).addScaledVector(ph>0.35?sd:tmp.set(-0.5,0.7,-0.7).normalize(),240);dir.target.position.copy(camera.position).add(tmp.set(0,-10,-60));dir.target.updateMatrixWorld();
     sky.position.copy(camera.position);
     const cur1=weeks.find(w=>w.current);if(cur1){const g=weekObjs[cur1.n];lantern.position.copy(g.position).add(new THREE.Vector3(0,4,0));}
-    labelSprites.forEach(s=>{tmp.setFromMatrixPosition(s.matrixWorld);const d=tmp.distanceTo(camera.position);s.material.opacity=Math.max(0,Math.min(1,1-(d-58)/48));});}
+    const fadeFrom=58*Math.max(1,z)*(1-k)+140*k,fadeLen=48*Math.max(1,z)*(1-k)+120*k;
+    labelSprites.forEach(s=>{tmp.setFromMatrixPosition(s.matrixWorld);const d=tmp.distanceTo(camera.position);s.material.opacity=Math.max(0,Math.min(1,1-(d-fadeFrom)/fadeLen));});}
 
   function applyPhase(){const P=pal.cur=mixPal(state.phase);
     skyU.top.value.copy(P.top);skyU.mid.value.copy(P.mid);skyU.hor.value.copy(P.hor);skyU.sunColor.value.copy(P.sun);skyU.sunV.value=P.sunV;skyU.glow.value=Math.max(0,1-Math.abs(state.phase-0.5)*2.2)+0.15;
@@ -241,19 +260,31 @@ export function createTrail(opts){
     birds.forEach(b=>b.material.opacity=Math.max(0,(state.phase-0.6)*2.5));clouds.forEach(c=>c.material.opacity=P.cloud*0.85);
     if(Math.abs(state.phase-state.envPhase)>0.12||state.envPhase<0){state.envPhase=state.phase;const t=envTexture(P);const rt=pmrem.fromEquirectangular(t);if(scene.environment)scene.environment.dispose();scene.environment=rt.texture;t.dispose();}}
 
-  /* --- interaction: scroll / drag walks the road, click opens --- */
+  /* --- interaction: drag up/down walks, drag sideways pivots (like a map), wheel walks, pinch or ctrl+wheel zooms, click opens --- */
   const ray=new THREE.Raycaster();const mouse=new THREE.Vector2();
   function hitTest(ev){const r=canvas.getBoundingClientRect();mouse.x=((ev.clientX-r.left)/r.width)*2-1;mouse.y=-((ev.clientY-r.top)/r.height)*2+1;ray.setFromCamera(mouse,camera);
     const hits=ray.intersectObjects(pick,false);return hits.length?hits[0].object:null;}
-  let dragging=false,dragY=0,dragT=0,moved=0;
-  canvas.addEventListener('pointerdown',e=>{dragging=true;dragY=e.clientY;dragT=state.tTarget;moved=0;try{canvas.setPointerCapture(e.pointerId);}catch(x){}});
-  canvas.addEventListener('pointermove',e=>{if(dragging){const dy=e.clientY-dragY;moved+=Math.abs(dy);state.tTarget=clampT(dragT-dy*0.0009);state.needs=true;return;}
-    const o=hitTest(e);const h=o?o.userData:null;const hk=h?h.kind+h.n:'';const sk=state.hover?state.hover.kind+state.hover.n:'';if(hk!==sk){state.hover=h;canvas.style.cursor=h?(h.open?'pointer':'not-allowed'):'grab';onHover(h);state.needs=true;}});
-  canvas.addEventListener('pointerup',e=>{dragging=false;try{canvas.releasePointerCapture(e.pointerId);}catch(x){}if(moved<6){const o=hitTest(e);if(o)onSelect(o.userData.kind,o.userData.n,o.userData.open);}});
-  canvas.addEventListener('pointercancel',()=>{dragging=false;});
-  canvas.addEventListener('wheel',e=>{e.preventDefault();state.tTarget=clampT(state.tTarget+e.deltaY*0.00028);state.needs=true;},{passive:false});
-  canvas.tabIndex=0;canvas.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRight'){state.tTarget=clampT(state.tTarget+0.03);state.needs=true;e.preventDefault();}if(e.key==='ArrowUp'||e.key==='ArrowLeft'){state.tTarget=clampT(state.tTarget-0.03);state.needs=true;e.preventDefault();}});
   const tMax=weekT(weeks.length?weeks[weeks.length-1].n:1)+0.05;const clampT=t=>Math.max(0,Math.min(tMax,t));
+  const clampZ=z=>Math.max(0.6,Math.min(4,z));
+  const ptrs=new Map();let dragging=false,dragX=0,dragY=0,dragT=0,dragYaw=0,moved=0,pinch0=0,zoom0=1;
+  canvas.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});dragging=true;dragX=e.clientX;dragY=e.clientY;dragT=state.tTarget;dragYaw=state.yawTarget;moved=0;canvas.classList.add('dragging');try{canvas.setPointerCapture(e.pointerId);}catch(x){}
+    if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);zoom0=state.zoomTarget;}});
+  canvas.addEventListener('pointermove',e=>{if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size>=2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0>0){state.zoomTarget=clampZ(zoom0*(pinch0/Math.max(1,d)));state.needs=true;}moved+=4;return;}
+    if(dragging){const dx=e.clientX-dragX,dy=e.clientY-dragY;moved+=Math.abs(dx)+Math.abs(dy);
+      state.tTarget=clampT(dragT-dy*0.0009*(state.sky>0.5?2.2:1));state.yawTarget=dragYaw-dx*0.0062;state.needs=true;return;}
+    const o=hitTest(e);const h=o?o.userData:null;const hk=h?h.kind+h.n:'';const sk=state.hover?state.hover.kind+state.hover.n:'';if(hk!==sk){state.hover=h;canvas.style.cursor=h?(h.open?'pointer':'not-allowed'):'grab';onHover(h);state.needs=true;}});
+  function endPointer(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=0;if(ptrs.size===0){dragging=false;canvas.classList.remove('dragging');}}
+  canvas.addEventListener('pointerup',e=>{const wasDrag=moved>=8;endPointer(e);try{canvas.releasePointerCapture(e.pointerId);}catch(x){}if(!wasDrag){const o=hitTest(e);if(o)onSelect(o.userData.kind,o.userData.n,o.userData.open);}});
+  canvas.addEventListener('pointercancel',endPointer);canvas.addEventListener('lostpointercapture',endPointer);
+  canvas.addEventListener('wheel',e=>{e.preventDefault();if(e.ctrlKey||e.metaKey){state.zoomTarget=clampZ(state.zoomTarget*(1+e.deltaY*0.0016));}else{state.tTarget=clampT(state.tTarget+e.deltaY*0.00028*(state.sky>0.5?2:1));}state.needs=true;},{passive:false});
+  canvas.addEventListener('dblclick',e=>{e.preventDefault();if(!hitTest(e)){state.yawTarget+=Math.PI;state.needs=true;}});
+  canvas.tabIndex=0;canvas.addEventListener('keydown',e=>{const k=e.key;let used=true;
+    if(k==='ArrowDown')state.tTarget=clampT(state.tTarget+0.03);else if(k==='ArrowUp')state.tTarget=clampT(state.tTarget-0.03);
+    else if(k==='ArrowLeft')state.yawTarget+=0.25;else if(k==='ArrowRight')state.yawTarget-=0.25;
+    else if(k==='+'||k==='=')state.zoomTarget=clampZ(state.zoomTarget*0.8);else if(k==='-'||k==='_')state.zoomTarget=clampZ(state.zoomTarget*1.25);
+    else if(k==='Home'){state.yawTarget=0;state.zoomTarget=1;state.skyTarget=0;}else used=false;
+    if(used){state.needs=true;e.preventDefault();}});
 
   /* --- resize --- */
   function resize(){const r=canvas.getBoundingClientRect();const w=Math.max(1,Math.round(r.width)),h=Math.max(1,Math.round(r.height));renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();state.needs=true;}
@@ -266,6 +297,9 @@ export function createTrail(opts){
     let dirty=state.needs;
     if(Math.abs(state.phase-state.target)>0.0005){state.phase+=(state.target-state.phase)*Math.min(1,dt*1.2);if(Math.abs(state.phase-state.target)<0.0005)state.phase=state.target;applyPhase();dirty=true;}
     if(Math.abs(state.t-state.tTarget)>0.00005||camera.position.distanceTo(camPos)>0.02){state.t+=(state.tTarget-state.t)*Math.min(1,dt*4);dirty=true;}
+    if(Math.abs(state.yaw-state.yawTarget)>0.0005){state.yaw+=(state.yawTarget-state.yaw)*Math.min(1,dt*5);dirty=true;}
+    if(Math.abs(state.zoom-state.zoomTarget)>0.0005){state.zoom+=(state.zoomTarget-state.zoom)*Math.min(1,dt*4);dirty=true;}
+    if(Math.abs(state.sky-state.skyTarget)>0.0005){state.sky+=(state.skyTarget-state.sky)*Math.min(1,dt*2.2);if(Math.abs(state.sky-state.skyTarget)<0.0005)state.sky=state.skyTarget;dirty=true;}
     if(state.animate){state.time+=dt;starU.time.value=state.time;flyU.time.value=state.time;dirty=true;
       stones.forEach((m,i)=>{if(m.userData.open)m.position.y=m.userData.base+Math.sin(state.time*0.8+i)*0.08;});
       clouds.forEach(c=>{const u=c.userData;u.a+=u.sp*dt;c.position.set(Math.cos(u.a)*u.r,c.position.y,Math.sin(u.a)*u.r);});
@@ -278,6 +312,11 @@ export function createTrail(opts){
     setAnimate(b){state.animate=!!b;state.needs=true;},
     focusWeek(n){state.tTarget=clampT(weekT(n)-0.03);state.needs=true;},
     walk(d){state.tTarget=clampT(state.tTarget+d);state.needs=true;},
+    turn(rad){state.yawTarget+=(rad===undefined?Math.PI:rad);state.needs=true;},
+    zoomBy(f){state.zoomTarget=clampZ(state.zoomTarget*f);state.needs=true;},
+    setSky(on){state.skyTarget=on?1:0;if(on&&state.zoomTarget<1)state.zoomTarget=1;state.needs=true;},
+    isSky(){return state.skyTarget>0.5;},
+    resetView(){state.yawTarget=0;state.zoomTarget=1;state.skyTarget=0;state.needs=true;},
     getPhase(){return state.phase;},
     dispose(){state.dead=true;ro.disconnect();io.disconnect();pmrem.dispose();renderer.dispose();}
   };
